@@ -70,7 +70,7 @@ module.exports = [
 
             for (let participant of chat.participants) {
                 mentions.push(participant.id._serialized);
-                list += `║ ☁️ @${participant.id.user}\n`;
+                list += `║ 🦖 @${participant.id.user}\n`;
             }
 
             list += `╚ ========\n*Llamados*${getLegend()}`;
