@@ -1,4 +1,4 @@
-const { getLegend } = require('../utils/legends');
+const { getLegend } = require('../utils/helpers');
 
 module.exports = [
     {
