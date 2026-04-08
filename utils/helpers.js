@@ -4,7 +4,7 @@ const isAdmin = async (chat, userSerialized) => {
     return part && (part.isAdmin || part.isSuperAdmin);
 };
 
-// Función para la leyenda: Rex bot | DD/MM/AAAA
+
 const getLegend = () => {
     const date = new Date().toLocaleDateString('es-MX');
     return `\n\n> Rex bot | ${date}`;

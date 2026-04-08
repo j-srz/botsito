@@ -1,7 +1,8 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const path = require('path');
 const fs = require('fs');
-const { getLegend } = require('../utils/helpers'); 
+// IMPORTANTE: Aquí importamos ambos helpers
+const { isAdmin, getLegend } = require('../utils/helpers'); 
 
 module.exports = [
     { name: '!ping', execute: async (msg) => msg.reply('pong') },
@@ -64,8 +65,8 @@ module.exports = [
             if (!chat.isGroup) return;
             await msg.react('📣');
 
-            // Forzamos a que mencione a todos los que ESTÁN ahorita
-            const mentions = chat.participants.map(p => p.id._serialized);
+            // Forzamos IDs como strings para evitar error t.replace
+            const mentions = chat.participants.map(p => String(p.id._serialized));
             let list = `*Llamando rexitos*\n╔ ========\n`;
 
             for (let participant of chat.participants) {
@@ -80,6 +81,16 @@ module.exports = [
         name: '.smoke',
         execute: async (msg) => {
             await msg.react('🚬');
+            const contact = await msg.getContact();
+            const gifUrl = 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExank0a3B5ODl2dTJlbm5rMGw1MzVvcWswbzVnY2twYmNneDF2NmZkaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KpAPQVW9lWnWU/giphy.gif';
+            try {
+                const media = await MessageMedia.fromUrl(gifUrl);
+                await msg.reply(media, undefined, { 
+                    sendVideoAsGif: true, 
+                    caption: `💨 @${contact.id.user} está quemando las neuronas...${getLegend()}`,
+                    mentions: [String(contact.id._serialized)]
+                });
+            } catch (e) { await msg.reply(`💨 @${contact.id.user} dándose un toque...`); }
         }
     },
     {
@@ -87,17 +98,17 @@ module.exports = [
         execute: async (msg) => {
             const contact = await msg.getContact();
             await msg.react('📈'); 
-            
+            // String() previene el error t.replace
+            const mentionId = String(contact.id._serialized);
             await msg.reply(`*Subasta:* @${contact.id.user} subió la puja. ☝️`, {
-                mentions: [contact.id._serialized]
+                mentions: [mentionId]
             });
         }
     },
-{
+    {
         name: '.gg',
         execute: async (msg) => {
             if (!msg.hasQuotedMsg) return; 
-
             const quoted = await msg.getQuotedMessage();
             const winnerCon = await quoted.getContact();
             const adminCon = await msg.getContact();
@@ -107,7 +118,7 @@ module.exports = [
             const amount = amountMatch ? parseInt(amountMatch[0]) : 0;
 
             await quoted.react('🏆');
-            await msg.react('💾'); 
+            //await msg.react('💾'); 
 
             const winnerEntry = {
                 fecha: new Date().toLocaleString('es-MX'),
@@ -135,6 +146,7 @@ module.exports = [
         execute: async (msg) => {
             const chat = await msg.getChat();
             const contact = await msg.getContact();
+            // Ahora isAdmin sí funcionará porque lo importamos arriba
             if (!(await isAdmin(chat, contact.id._serialized))) return;
 
             const filePath = path.join(__dirname, '../data/subastas_registro.json');
@@ -142,7 +154,6 @@ module.exports = [
 
             try {
                 const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-                
                 const stats = {};
                 data.forEach(p => {
                     if (!stats[p.ganador_id]) {
@@ -153,12 +164,11 @@ module.exports = [
                 });
 
                 const ranking = Object.values(stats).sort((a, b) => b.victorias - a.victorias);
-
                 let res = `*📊 RESUMEN DE SUBASTAS*\n_Top Ganadores_\n\n`;
                 ranking.forEach((user, i) => {
                     const medalla = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤';
                     res += `${medalla} *${user.nombre}*\n`;
-                    res += `   └  Wins: ${user.victorias} | Total: $${user.total}\n`;
+                    res += `   └ Wins: ${user.victorias} | Total: $${user.total}\n`;
                 });
 
                 await msg.reply(res + getLegend());
