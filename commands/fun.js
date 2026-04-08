@@ -5,7 +5,7 @@ const fs = require('fs');
 const { isAdmin, getLegend } = require('../utils/helpers'); 
 
 module.exports = [
-    { name: '!ping', execute: async (msg) => msg.reply('pong') },
+    { name: '.ping', execute: async (msg) => msg.reply('pong') },
     { name: '.1500', execute: async (msg) => msg.reply('milquinientos') },
     {
         name: '.vtalv',
@@ -91,18 +91,6 @@ module.exports = [
                     mentions: [String(contact.id._serialized)]
                 });
             } catch (e) { await msg.reply(`💨 @${contact.id.user} dándose un toque...`); }
-        }
-    },
-    {
-        name: '.up',
-        execute: async (msg) => {
-            const contact = await msg.getContact();
-            await msg.react('📈'); 
-            // String() previene el error t.replace
-            const mentionId = String(contact.id._serialized);
-            await msg.reply(`*Subasta:* @${contact.id.user} subió la puja. ☝️`, {
-                mentions: [mentionId]
-            });
         }
     },
     {

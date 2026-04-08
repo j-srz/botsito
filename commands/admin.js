@@ -34,7 +34,7 @@ module.exports = [
         }
     },
     {
-        name: '.unpromote',
+        name: '.demote',
         execute: async (msg) => {
             const chat = await msg.getChat();
             const contact = await msg.getContact();

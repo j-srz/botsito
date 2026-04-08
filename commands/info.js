@@ -1,5 +1,5 @@
 module.exports = {
-    name: '!user',
+    name: '.user',
     execute: async (msg) => {
         const contact = await msg.getContact();
         const chat = await msg.getChat();
@@ -10,5 +10,48 @@ module.exports = {
             info += `*Rol:* ${rol}`;
         }
         await msg.reply(info);
+    },
+    name: '.info',
+    execute: async (msg) => {
+        const chat = await msg.getChat();
+        let info = `*Nombre del chat:* ${chat.name}\n*ID del chat:* ${chat.id._serialized}\n*Es grupo:* ${chat.isGroup}`;
+        if (chat.isGroup) {
+            info += `\n*Número de participantes:* ${chat.participants.length}`;
+        }
+        await msg.reply(info);
+    },
+    name: 'commands',
+    execute: async (msg) => {
+        let commandsList = '*Comandos disponibles:*\n';
+
+        commandsList += '*✨ INTERACCIÓN*\n';
+        commandsList += '• `.n` - Reenvía/Edita texto de imagen o video.\n';
+        commandsList += '• `.user` - Muestra tu info y rango.\n';
+        commandsList += '• `.ping` - Verifica si el bot está activo.\n';
+        commandsList += '• `.vtalv` - Envía un saludo.\n';
+        commandsList += '• `.wassaa` - wassaa.\n';
+        commandsList += '• `.kiss` - Dale un beso a alguien.\n';
+        commandsList += '• `.tickle` - Hazle cosquillas a un usuario.\n';
+        commandsList += '• `.smoke` - 🚬\n';
+        commandsList += '• `.1500` - Milquinientos.\n\n';
+
+        commandsList += '*🛠️ GRUPO & SUBASTAS*\n';
+        commandsList += '• `.todos` - Menciona a todos los rexitos 🦖.\n';
+        commandsList += '• `.gg` - Registra al ganador y el monto.\n\n';
+
+        commandsList += '*🛡️ ADMINISTRACIÓN (Solo Admins)*\n';
+        commandsList += '• `.resumen` - Ranking de ganadores de subastas.\n';
+        commandsList += '• `.kick` - Expulsa a un usuario del grupo.\n';
+        commandsList += '• `.promote` - Sube a alguien a Administrador.\n';
+        commandsList += '• `.demote` - Quita el rango de Administrador.\n';
+        commandsList += '• `.close [tiempo]` - Cierra el grupo (ej: .close 5m).\n';
+        commandsList += '• `.open` - Abre el grupo para todos.\n\n';
+
+
+
+
+
+        await msg.reply(commandsList);
     }
+
 };
