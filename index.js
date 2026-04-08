@@ -7,7 +7,7 @@ const path = require('path');
 const { isAdmin } = require('./utils/helpers'); 
 
 const gruposAdmitidos = process.env.ALLOWED_GROUPS 
-    ? process.env.GRUPOS_ADMITIDOS.split(',').map(id => id.trim()) 
+    ? process.env.ALLOWED_GROUPS.split(',').map(id => id.trim()) 
     : [];
 
 const client = new Client({
