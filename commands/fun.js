@@ -87,7 +87,7 @@ module.exports = [
                 const media = await MessageMedia.fromUrl(gifUrl);
                 await msg.reply(media, undefined, { 
                     sendVideoAsGif: true, 
-                    caption: `💨 @${contact.id.user} está quemando las neuronas...${getLegend()}`,
+                    caption: `💨 @${contact.id.user}  ${getLegend()}`,
                     mentions: [String(contact.id._serialized)]
                 });
             } catch (e) { await msg.reply(`💨 @${contact.id.user} dándose un toque...`); }

@@ -1,3 +1,5 @@
+const { getLegend } = require('../utils/legends');
+
 module.exports = [
     {
         name: '.user',
