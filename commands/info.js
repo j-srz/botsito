@@ -15,17 +15,7 @@ module.exports = [
             await msg.reply(info);
         }
     },
-    {
-        name: '.info',
-        execute: async (msg) => {
-            const chat = await msg.getChat();
-            let info = `*Nombre del chat:* ${chat.name}\n*ID del chat:* ${chat.id._serialized}\n*Es grupo:* ${chat.isGroup}`;
-            if (chat.isGroup) {
-                info += `\n*Número de participantes:* ${chat.participants.length}`;
-            }
-            await msg.reply(info);
-        }
-    },
+
     {
         name: '.cm',
         execute: async (msg) => {
@@ -57,5 +47,13 @@ module.exports = [
 
             await msg.reply(commandsList);
         }
-    }
+    },
+    {
+        name: '.id',
+        execute: async (msg) => {
+            const chat = await msg.getChat();
+            // Esto te responde con el ID exacto que debes copiar a tu .env
+            await msg.reply(`*🆔 ID DE ESTE CHAT:*\n\n\`${chat.id._serialized}\``);
+        }
+    },
 ];
