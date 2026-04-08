@@ -6,8 +6,7 @@ const path = require('path');
 
 const { isAdmin } = require('./utils/helpers'); 
 
-// 1. CARGAMOS LA LISTA DESDE EL .ENV
-const gruposAdmitidos = process.env.GRUPOS_ADMITIDOS 
+const gruposAdmitidos = process.env.ALLOWED_GROUPS 
     ? process.env.GRUPOS_ADMITIDOS.split(',').map(id => id.trim()) 
     : [];
 
