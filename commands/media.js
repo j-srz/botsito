@@ -1,7 +1,7 @@
 module.exports = {
     name: '.n',
     execute: async (msg) => {
-        if (!msg.hasQuotedMsg) return;
+        if (!msg.hasQuotedMsg) return msg.reply('Responde a un mensaje.');
         const quoted = await msg.getQuotedMessage();
         const customText = msg.body.substring(2).trim();
         const caption = customText || quoted.body || '';
