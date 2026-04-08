@@ -52,10 +52,13 @@ module.exports = [
         execute: async (msg) => {
             const chat = await msg.getChat();
             const contact = await msg.getContact();
-            if (await isAdmin(chat, contact.id._serialized)) {
-                await chat.setMessagesAdminsOnly(false);
-                await msg.reply('🔓 Grupo abierto.');
-            }
+            if (!(await isAdmin(chat, contact.id._serialized))) return;
+
+            await msg.react('🔓');
+            await chat.setMessagesAdminsOnly(false);
+            
+            const text = `_Grupo Abierto_ 🔓\n_por_ @${contact.id.user}${getLegend()}`;
+            await chat.sendMessage(text, { mentions: [contact.id._serialized] });
         }
     },
     {
@@ -63,9 +66,29 @@ module.exports = [
         execute: async (msg) => {
             const chat = await msg.getChat();
             const contact = await msg.getContact();
-            if (await isAdmin(chat, contact.id._serialized)) {
-                await chat.setMessagesAdminsOnly(true);
-                await msg.reply('🔒 Grupo cerrado.');
+            if (!(await isAdmin(chat, contact.id._serialized))) return;
+
+            const args = msg.body.split(' ');
+            let timerMs = 0;
+
+            // Lógica de temporizador (.close 4m o .close 30s)
+            if (args[1]) {
+                const time = args[1];
+                if (time.endsWith('m')) timerMs = parseInt(time) * 60000;
+                else if (time.endsWith('s')) timerMs = parseInt(time) * 1000;
+            }
+
+            await msg.react('🔒');
+            await chat.setMessagesAdminsOnly(true);
+            
+            const text = `_Grupo Cerrado_ 🔒\n_por_ @${contact.id.user}${getLegend()}`;
+            await chat.sendMessage(text, { mentions: [contact.id._serialized] });
+
+            if (timerMs > 0) {
+                setTimeout(async () => {
+                    await chat.setMessagesAdminsOnly(false);
+                    await chat.sendMessage(`_Grupo Abierto automáticamente (Timer finalizado)_ 🔓${getLegend()}`);
+                }, timerMs);
             }
         }
     }

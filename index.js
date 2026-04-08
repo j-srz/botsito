@@ -45,7 +45,8 @@ client.on('message_create', async (msg) => {
         try {
             await client.commands.get(cmdName).execute(msg, client);
         } catch (err) {
-            console.error(`Error en ${cmdName}:`, err);
+            console.error(err);
+            await msg.react('❌');
         }
     }
 });

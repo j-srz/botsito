@@ -61,9 +61,25 @@ module.exports = [
         execute: async (msg) => {
             const chat = await msg.getChat();
             if (!chat.isGroup) return;
-            const mentions = chat.participants.map(p => p.id._serialized);
-            const names = chat.participants.map(p => `@${p.id.user}`).join('\n');
-            await chat.sendMessage(`*Llamando rexitos*\n${names}\n\n*Llamados*`, { mentions });
+            await msg.react('📣');
+
+            const mentions = [];
+            let list = `*Llamando rexitos*\n╔ ========\n`;
+
+            for (let participant of chat.participants) {
+                mentions.push(participant.id._serialized);
+                // Formato monoespaciado y subrayado: `_@user_`
+                list += `║ ☁️ @${participant.id.user}\n`;
+            }
+
+            list += `╚ ========\n*Llamados*${getLegend()}`;
+            await chat.sendMessage(list, { mentions });
+        }
+    }, 
+    {
+        name: '.smoke',
+        execute: async (msg) => {
+            await msg.react('🚬');
         }
     }
 ];
