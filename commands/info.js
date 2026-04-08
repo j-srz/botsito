@@ -49,7 +49,7 @@ module.exports = [
         }
     },
     {
-        name: '.id',
+        name: '.id_SECRET',
         execute: async (msg) => {
             const chat = await msg.getChat();
             // Esto te responde con el ID exacto que debes copiar a tu .env
