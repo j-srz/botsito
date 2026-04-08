@@ -81,7 +81,6 @@ module.exports = [
         name: '.smoke',
         execute: async (msg) => {
             await msg.react('🚬');
-            await msg.reply(`💨 _Fumando un poco mientras el código compila..._${getLegend()}`);
         }
     },
     {
