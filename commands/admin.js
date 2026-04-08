@@ -46,6 +46,44 @@ module.exports = [
         }
     },
     {
+        name: '.close',
+        execute: async (msg) => {
+            const chat = await msg.getChat();
+            const contact = await msg.getContact();
+            if (!(await isAdmin(chat, contact.id._serialized))) return;
+
+            const args = msg.body.split(' ');
+            const timeStr = args[1]; // Aquí puede no haber nada
+
+            // CASO 1: Cierre instantáneo (Si no escribiste tiempo)
+            if (!timeStr) {
+                await chat.setMessagesAdminsOnly(true);
+                await msg.react('🔒');
+                const text = `_Grupo Cerrado_ 🔒\n_por_ @${contact.id.user}${getLegend()}`;
+                return await chat.sendMessage(text, { mentions: [contact.id._serialized] });
+            }
+
+            // CASO 2: Cierre programado (Si pusiste algo como 5m)
+            let timerMs = 0;
+            if (timeStr.endsWith('m')) timerMs = parseInt(timeStr) * 60000;
+            else if (timeStr.endsWith('s')) timerMs = parseInt(timeStr) * 1000;
+
+            if (timerMs > 0) {
+                await msg.react('⏳');
+                await msg.reply(`*Cierre programado:* Este grupo se cerrará en ${timeStr}. 🛡️`);
+
+                setTimeout(async () => {
+                    // Verificamos de nuevo el chat por si acaso
+                    const freshChat = await msg.getChat();
+                    await freshChat.setMessagesAdminsOnly(true);
+                    await freshChat.sendMessage(`_Cierre Automático_ 🔒\n_Tiempo cumplido (${timeStr})_${getLegend()}`);
+                }, timerMs);
+            } else {
+                await msg.reply('❌ Tiempo no válido. Usa ej: `.close 5m` o `.close 30s`');
+            }
+        }
+    },
+    {
         name: '.open',
         execute: async (msg) => {
             const chat = await msg.getChat();
@@ -56,42 +94,6 @@ module.exports = [
             await msg.react('🔓');
             const text = `_Grupo Abierto_ 🔓\n_por_ @${contact.id.user}${getLegend()}`;
             await chat.sendMessage(text, { mentions: [contact.id._serialized] });
-        }
-    },
-    {
-        name: '.close',
-        execute: async (msg) => {
-            const chat = await msg.getChat();
-            const contact = await msg.getContact();
-            if (!(await isAdmin(chat, contact.id._serialized))) return;
-
-            const args = msg.body.split(' ');
-            
-            // Si NO pones tiempo, se cierra al instante
-            if (!args[1]) {
-                await chat.setMessagesAdminsOnly(true);
-                await msg.react('🔒');
-                const text = `_Grupo Cerrado_ 🔒\n_por_ @${contact.id.user}${getLegend()}`;
-                return await chat.sendMessage(text, { mentions: [contact.id._serialized] });
-            }
-
-            // Si hay tiempo (ej: .close 5m)
-            const timeStr = args[1];
-            let timerMs = 0;
-            if (timeStr.endsWith('m')) timerMs = parseInt(timeStr) * 60000;
-            else if (timeStr.endsWith('s')) timerMs = parseInt(timeStr) * 1000;
-
-            if (timerMs > 0) {
-                await msg.react('⏳');
-                await msg.reply(`*Cierre programado:* Este grupo se cerrará en ${timeStr}. 🛡️`);
-
-                // PROGRAMACIÓN: Solo hace el cierre DESPUÉS del tiempo
-                setTimeout(async () => {
-                    await chat.setMessagesAdminsOnly(true);
-                    const text = `_Cierre Automático_ 🔒\n_Tiempo cumplido (${timeStr})_${getLegend()}`;
-                    await chat.sendMessage(text);
-                }, timerMs);
-            }
         }
     }
 ];

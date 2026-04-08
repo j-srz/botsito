@@ -1,7 +1,6 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const path = require('path');
 const fs = require('fs');
-// --- ESTA LÍNEA ES LA QUE FALTA PARA QUE NO TRUENE EL .TODOS ---
 const { getLegend } = require('../utils/helpers'); 
 
 module.exports = [
@@ -65,11 +64,11 @@ module.exports = [
             if (!chat.isGroup) return;
             await msg.react('📣');
 
-            const mentions = [];
+            // Forzamos a que mencione a todos los que ESTÁN ahorita
+            const mentions = chat.participants.map(p => p.id._serialized);
             let list = `*Llamando rexitos*\n╔ ========\n`;
 
             for (let participant of chat.participants) {
-                mentions.push(participant.id._serialized);
                 list += `║ 🦖 @${participant.id.user}\n`;
             }
 
@@ -86,8 +85,84 @@ module.exports = [
     {
         name: '.up',
         execute: async (msg) => {
-            await msg.react('🚀');
-            await msg.reply(`*Bot activo y operando en la Raspberry Pi* 🔋${getLegend()}`);
+            const contact = await msg.getContact();
+            await msg.react('📈'); 
+            
+            await msg.reply(`*Subasta:* @${contact.id.user} subió la puja. ☝️`, {
+                mentions: [contact.id._serialized]
+            });
         }
-    }
+    },
+{
+        name: '.gg',
+        execute: async (msg) => {
+            if (!msg.hasQuotedMsg) return; 
+
+            const quoted = await msg.getQuotedMessage();
+            const winnerCon = await quoted.getContact();
+            const adminCon = await msg.getContact();
+            const chat = await msg.getChat();
+            
+            const amountMatch = quoted.body.match(/\d+/);
+            const amount = amountMatch ? parseInt(amountMatch[0]) : 0;
+
+            await quoted.react('🏆');
+            await msg.react('💾'); 
+
+            const winnerEntry = {
+                fecha: new Date().toLocaleString('es-MX'),
+                admin_nombre: adminCon.pushname || adminCon.number,
+                admin_id: adminCon.id._serialized,
+                ganador_nombre: winnerCon.pushname || winnerCon.number,
+                ganador_id: winnerCon.id._serialized,
+                monto: amount,
+                grupo: chat.name
+            };
+
+            const dataPath = path.join(__dirname, '../data');
+            const filePath = path.join(dataPath, 'subastas_registro.json');
+
+            try {
+                if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath);
+                let registro = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
+                registro.push(winnerEntry);
+                fs.writeFileSync(filePath, JSON.stringify(registro, null, 2));
+            } catch (err) { console.error(err); }
+        }
+    },
+    {
+        name: '.resumen',
+        execute: async (msg) => {
+            const chat = await msg.getChat();
+            const contact = await msg.getContact();
+            if (!(await isAdmin(chat, contact.id._serialized))) return;
+
+            const filePath = path.join(__dirname, '../data/subastas_registro.json');
+            if (!fs.existsSync(filePath)) return await msg.reply('Sin registros aún.');
+
+            try {
+                const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                
+                const stats = {};
+                data.forEach(p => {
+                    if (!stats[p.ganador_id]) {
+                        stats[p.ganador_id] = { nombre: p.ganador_nombre, victorias: 0, total: 0 };
+                    }
+                    stats[p.ganador_id].victorias += 1;
+                    stats[p.ganador_id].total += p.monto;
+                });
+
+                const ranking = Object.values(stats).sort((a, b) => b.victorias - a.victorias);
+
+                let res = `*📊 RESUMEN DE SUBASTAS*\n_Top Ganadores_\n\n`;
+                ranking.forEach((user, i) => {
+                    const medalla = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤';
+                    res += `${medalla} *${user.nombre}*\n`;
+                    res += `   └  Wins: ${user.victorias} | Total: $${user.total}\n`;
+                });
+
+                await msg.reply(res + getLegend());
+            } catch (err) { await msg.reply('Error al procesar resumen.'); }
+        }
+    },
 ];
