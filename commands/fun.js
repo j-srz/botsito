@@ -1,6 +1,8 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const path = require('path');
 const fs = require('fs');
+// --- ESTA LÍNEA ES LA QUE FALTA PARA QUE NO TRUENE EL .TODOS ---
+const { getLegend } = require('../utils/helpers'); 
 
 module.exports = [
     { name: '!ping', execute: async (msg) => msg.reply('pong') },
@@ -68,7 +70,6 @@ module.exports = [
 
             for (let participant of chat.participants) {
                 mentions.push(participant.id._serialized);
-                // Formato monoespaciado y subrayado: `_@user_`
                 list += `║ ☁️ @${participant.id.user}\n`;
             }
 
@@ -80,6 +81,14 @@ module.exports = [
         name: '.smoke',
         execute: async (msg) => {
             await msg.react('🚬');
+            await msg.reply(`💨 _Fumando un poco mientras el código compila..._${getLegend()}`);
+        }
+    },
+    {
+        name: '.up',
+        execute: async (msg) => {
+            await msg.react('🚀');
+            await msg.reply(`*Bot activo y operando en la Raspberry Pi* 🔋${getLegend()}`);
         }
     }
 ];
