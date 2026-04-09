@@ -105,5 +105,35 @@ module.exports = [
             const text = `_Grupo Abierto_ 🔓\n_por_ @${sender.split('@')[0]}${getLegend()}`;
             await sock.sendMessage(jid, { text, mentions: [sender] });
         }
-    }
+    },
+    {
+        name: '.shh',
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo || !quotedInfo.participant) return;
+
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
+
+            // 1. Manda el mensaje con mención
+            await sock.sendMessage(jid, { 
+                text: `@${targetNumber} NO SPAM O BAN!!`, 
+                mentions: [targetJid] 
+            });
+
+            // 2. Reacciona al mensaje del usuario pesado
+            await sock.sendMessage(jid, { 
+                react: { 
+                    text: '⚠️', 
+                    key: { 
+                        remoteJid: jid, 
+                        fromMe: false, 
+                        id: quotedInfo.stanzaId, 
+                        participant: targetJid 
+                    } 
+                } 
+            });
+        }
+    },
 ];

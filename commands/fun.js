@@ -216,5 +216,35 @@ module.exports = [
                 await sock.sendMessage(jid, { text: res + getLegend(), mentions: allMentions }, { quoted: m });
             } catch (err) { await sock.sendMessage(jid, { text: 'Error al procesar resumen.' }); }
         }
-    }
+    },
+    {
+        name: '.joto',
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            
+            // 1. CASO: NO RESPONDIÓ A NADIE (Se la regresa al que mandó el comando)
+            if (!quotedInfo || !quotedInfo.participant) {
+                const senderName = m.pushName || 'Alguien';
+                return await sock.sendMessage(jid, { 
+                    text: `che \`${senderName}\` joto mejor responde a alguien.` 
+                }, { quoted: m });
+            }
+
+            // 2. CASO: SÍ RESPONDIÓ A ALGUIEN
+            const targetJid = quotedInfo.participant;
+            const groupMetadata = await sock.groupMetadata(jid);
+            const participant = groupMetadata.participants.find(p => p.id === targetJid);
+            
+            // Obtenemos el nombre del objetivo (Target)
+            const targetName = participant?.name || participant?.notify || targetJid.split('@')[0].split(':')[0];
+            
+            // Generamos un número al azar entre 1 y 100
+            const porcentaje = Math.floor(Math.random() * 100) + 1;
+
+            await sock.sendMessage(jid, { 
+                text: `🏳️‍🌈 El usuario \`${targetName}\` es un **${porcentaje}%** gei.` 
+            }, { quoted: m });
+        }
+    },
 ];
