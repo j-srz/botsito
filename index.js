@@ -8,23 +8,26 @@ const {
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
-
-// Nota: Necesitaremos ajustar tu helper 'isAdmin' después para Baileys
 const { isAdmin } = require('./utils/helpers'); 
 
+// 1. CARGA SEGURA DE GRUPOS (Fuera de la función para mayor velocidad)
+const rawGroups = process.env.ALLOWED_GROUPS || ""; 
+const gruposAdmitidos = rawGroups.length > 0 
+    ? rawGroups.split(',').map(id => id.trim()) 
+    : [];
+
 async function startBot() {
-    // 1. Gestión de Sesión (Guardará la conexión en la carpeta 'auth_info')
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: true, // Esto reemplaza tu lógica de qrcode-terminal manual
+        // Eliminamos printQRInTerminal para evitar el aviso de "deprecated"
+        // y lo manejamos abajo con el evento 'qr'
         browser: ["Rex Bot", "MacOS", "3.0.0"],
     });
 
-    // 2. Carga de Comandos (Mantenemos tu lógica modular)
     const commands = new Map();
     const commandsPath = path.join(__dirname, 'commands');
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -38,69 +41,60 @@ async function startBot() {
         }
     }
 
-    // 3. Manejo de Conexión
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
+        // Manejo manual del QR
         if (qr) qrcode.generate(qr, { small: true });
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Conexión cerrada. ¿Reconectando?:', shouldReconnect);
             if (shouldReconnect) startBot();
         } else if (connection === 'open') {
-            console.log('✅ REX BOT ONLINE (BAILEYS) - SIN CHROMIUM');
+            console.log('✅ REX BOT ONLINE');
+            console.log('Grupos autorizados:', gruposAdmitidos.length);
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // 4. Procesamiento de Mensajes
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
 
-        // Extraer texto del mensaje (Baileys maneja varios tipos)
-        const messageType = Object.keys(m.message)[0];
-        const body = (messageType === 'conversation') ? m.message.conversation : 
-                     (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
-                     (messageType === 'imageMessage') ? m.message.imageMessage.caption : 
-                     (messageType === 'videoMessage') ? m.message.videoMessage.caption : '';
+        // 2. EXTRACCIÓN DE TEXTO MEJORADA
+        const body = m.message.conversation || 
+                     m.message.extendedTextMessage?.text || 
+                     m.message.imageMessage?.caption || 
+                     m.message.videoMessage?.caption || '';
 
         const text = body.toLowerCase().trim();
-        const jid = m.key.remoteJid; // El ID del chat (grupo o usuario)
+        const jid = m.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
 
-        // Whitelist desde .env
-        const gruposAdmitidos = process.env.ALLOWED_GROUPS 
-            ? process.env.ALLOWED_GROUPS.split(',').map(id => id.trim()) 
-            : [];
-
-        // Buscamos el comando
         const cmdName = Array.from(commands.keys()).find(n => text === n || text.startsWith(n + ' '));
 
         if (cmdName) {
             try {
-                // El sender es quien envía el mensaje
+                // Obtenemos el sender (quien envía el mensaje)
                 const sender = m.key.participant || m.key.remoteJid;
 
                 if (isGroup) {
-                    // A. BLOQUEO ADMIN (Ajustaremos isAdmin en el siguiente paso)
+                    // A. Verificación de Admin
                     const authorized = await isAdmin(sock, jid, sender);
                     if (!authorized) return;
 
-                    // B. FILTRO DE WHITELIST
+                    // B. Filtro de Whitelist (Excepto para el comando .id)
                     if (cmdName !== '.id' && !gruposAdmitidos.includes(jid)) {
                         return;
                     }
                 }
 
-                // Ejecutamos pasándole 'sock' (el cliente) y 'm' (el mensaje crudo)
                 await commands.get(cmdName).execute(sock, m, body);
                 
             } catch (err) {
-                console.error('Error en comando:', err);
+                console.error('Error:', err);
                 await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
             }
         }

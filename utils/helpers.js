@@ -8,24 +8,21 @@ const isAdmin = async (sock, jid, user) => {
     try {
         if (!jid.endsWith('@g.us')) return false;
 
-        // Obtenemos la metadata del grupo (participantes y sus rangos)
+        // "Limpiamos" el ID del usuario (quitamos el :1, :2, etc. de Baileys)
+        const cleanUser = user.split(':')[0] + (user.includes('@') ? '@' + user.split('@')[1] : '');
+
         const groupMetadata = await sock.groupMetadata(jid);
         const participants = groupMetadata.participants;
 
-        // Buscamos al usuario en la lista de participantes
-        const participant = participants.find(p => p.id === user);
+        // Buscamos al usuario limpio en la lista
+        const participant = participants.find(p => p.id === cleanUser);
 
-        // En Baileys, el rango es 'admin' o 'superadmin'
         return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
     } catch (e) {
-        console.error('Error en isAdmin:', e);
         return false;
     }
 };
 
-/**
- * Genera la firma del bot con la fecha actual
- */
 const getLegend = () => {
     const date = new Date().toLocaleDateString('es-MX');
     return `\n\n> Rex bot | ${date}`;
