@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { isAdmin } = require('./utils/helpers'); 
 
-// 1. CARGA SEGURA DE GRUPOS (Fuera de la función para mayor velocidad)
+// 1. CARGA SEGURA DE GRUPOS
 const rawGroups = process.env.ALLOWED_GROUPS || ""; 
 const gruposAdmitidos = rawGroups.length > 0 
     ? rawGroups.split(',').map(id => id.trim()) 
@@ -23,9 +23,12 @@ async function startBot() {
     const sock = makeWASocket({
         version,
         auth: state,
-        // Eliminamos printQRInTerminal para evitar el aviso de "deprecated"
-        // y lo manejamos abajo con el evento 'qr'
         browser: ["Rex Bot", "MacOS", "3.0.0"],
+        // --- CONFIGURACIÓN PARA RASPBERRY PI (ALTA VELOCIDAD) ---
+        syncFullHistory: false,            // No descargar mensajes viejos
+        shouldSyncHistoryMessage: () => false, // Bloquear sincronización de historial
+        linkPreview: false,                // Ahorrar CPU no procesando links
+        markOnlineOnConnect: true,
     });
 
     const commands = new Map();
@@ -43,16 +46,14 @@ async function startBot() {
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
-        
-        // Manejo manual del QR
         if (qr) qrcode.generate(qr, { small: true });
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) startBot();
         } else if (connection === 'open') {
-            console.log('✅ REX BOT ONLINE');
-            console.log('Grupos autorizados:', gruposAdmitidos.length);
+            console.log('✅ REX BOT ONLINE (BAILEYS OPTIMIZADO)');
+            console.log('Grupos en Whitelist:', gruposAdmitidos);
         }
     });
 
@@ -63,7 +64,7 @@ async function startBot() {
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
 
-        // 2. EXTRACCIÓN DE TEXTO MEJORADA
+        // Extraer texto
         const body = m.message.conversation || 
                      m.message.extendedTextMessage?.text || 
                      m.message.imageMessage?.caption || 
@@ -72,29 +73,40 @@ async function startBot() {
         const text = body.toLowerCase().trim();
         const jid = m.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
+        const sender = m.key.participant || m.key.remoteJid;
 
         const cmdName = Array.from(commands.keys()).find(n => text === n || text.startsWith(n + ' '));
 
         if (cmdName) {
+            // LOG DE DEBUG (Aparecerá en pm2 logs)
+            console.log(`📩 Comando detectado: ${cmdName} | Chat: ${jid} | Sender: ${sender}`);
+
             try {
-                // Obtenemos el sender (quien envía el mensaje)
-                const sender = m.key.participant || m.key.remoteJid;
+                // EXCEPCIÓN DE SEGURIDAD: .id siempre responde
+                if (cmdName === '.id') {
+                    return await commands.get('.id').execute(sock, m, body);
+                }
 
                 if (isGroup) {
-                    // A. Verificación de Admin
-                    const authorized = await isAdmin(sock, jid, sender);
-                    if (!authorized) return;
+                    // A. Filtro de Whitelist (.env)
+                    if (!gruposAdmitidos.includes(jid)) {
+                        console.log(`🚫 Grupo no autorizado: ${jid}`);
+                        return;
+                    }
 
-                    // B. Filtro de Whitelist (Excepto para el comando .id)
-                    if (cmdName !== '.id' && !gruposAdmitidos.includes(jid)) {
+                    // B. Verificación de Admin
+                    const authorized = await isAdmin(sock, jid, sender);
+                    if (!authorized) {
+                        console.log(`⚠️ Intento de uso sin ser admin: ${sender}`);
                         return;
                     }
                 }
 
+                // Si pasó los filtros, ejecutar
                 await commands.get(cmdName).execute(sock, m, body);
                 
             } catch (err) {
-                console.error('Error:', err);
+                console.error('❌ Error ejecutando comando:', err);
                 await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
             }
         }
