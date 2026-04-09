@@ -1,5 +1,4 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
 module.exports = [
