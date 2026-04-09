@@ -70,62 +70,46 @@ module.exports = [
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
                     if (isAnimated) {
-                        const tempWebp = path.join(__dirname, `../media/temp_${Date.now()}.webp`);
-                        const tempMp4 = path.join(__dirname, `../media/temp_${Date.now()}.mp4`);
-                        if (!fs.existsSync(path.join(__dirname, '../media'))) fs.mkdirSync(path.join(__dirname, '../media'));
+                        // Usamos path.resolve para no tener errores de rutas en Linux
+                        const tempWebp = path.resolve(__dirname, `../media/temp_${Date.now()}.webp`);
+                        const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
+                        
                         fs.writeFileSync(tempWebp, buffer);
 
-                        const ffmpegCmd = `ffmpeg -i ${tempWebp} -pix_fmt yuv420p -vf "scale=truncate(iw/2)*2:truncate(ih/2)*2" ${tempMp4}`;
-                        exec(ffmpegCmd, async (error) => {
-                            if (error) return await sock.sendMessage(jid, { text: '❌ Error en conversión animada.' });
+                        // COMANDO BLINDADO PARA RASPBERRY:
+                        // -t 10: Límite de 10 segundos para no saturar el CPU
+                        // scale y pad: Aseguran un video de 512x512 perfecto para WA
+                        const ffmpegCmd = `ffmpeg -y -i "${tempWebp}" -t 10 -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -preset ultrafast "${tempMp4}"`;
 
-                            await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
-                            if (fs.existsSync(tempWebp)) fs.unlinkSync(tempWebp);
-                            if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
+                        exec(ffmpegCmd, async (error, stdout, stderr) => {
+                            if (error) {
+                                console.error('FFmpeg Error Stderr:', stderr);
+                                return await sock.sendMessage(jid, { text: '❌ Error en conversión. Intenta con otro sticker.' });
+                            }
+
+                            await sock.sendMessage(jid, { 
+                                video: fs.readFileSync(tempMp4), 
+                                gifPlayback: true, 
+                                caption: '> Sticker animado convertido 🦖' 
+                            }, { quoted: m });
+
+                            // Borrado seguro
+                            setTimeout(() => {
+                                if (fs.existsSync(tempWebp)) fs.unlinkSync(tempWebp);
+                                if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
+                            }, 3000);
                         });
                     } else {
                         await sock.sendMessage(jid, { image: buffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
                     }
-                } catch (e) { await sock.sendMessage(jid, { text: '❌ Error al procesar sticker.' }); }
+                } catch (e) {
+                    await sock.sendMessage(jid, { text: '❌ Error al procesar el archivo.' });
+                }
             } else {
                 await sock.sendMessage(jid, { text: 'Responde a un sticker.' });
             }
         }
-    },
-    {
-        name: '.shh',
-        execute: async (sock, m) => {
-            const jid = m.key.remoteJid;
-            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
-            if (!quotedInfo || !quotedInfo.participant) return;
-
-            const targetJid = quotedInfo.participant;
-            const targetNumber = targetJid.split('@')[0].split(':')[0];
-
-            await sock.sendMessage(jid, { text: `@${targetNumber} NO SPAM O BAN!! 🤫`, mentions: [targetJid] });
-            await sock.sendMessage(jid, { 
-                react: { text: '⚠️', key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } 
-            });
-        }
-    },
-    {
-        name: '.joto',
-        execute: async (sock, m) => {
-            const jid = m.key.remoteJid;
-            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
-
-            if (!quotedInfo || !quotedInfo.participant) {
-                const senderName = m.pushName || 'Alguien';
-                return await sock.sendMessage(jid, { text: `che joto \`${senderName}\` mejor responde a alguien.` }, { quoted: m });
-            }
-
-            const targetJid = quotedInfo.participant;
-            const groupMetadata = await sock.groupMetadata(jid);
-            const participant = groupMetadata.participants.find(p => p.id === targetJid);
-            const targetName = participant?.name || participant?.notify || targetJid.split('@')[0].split(':')[0];
-            const porcentaje = Math.floor(Math.random() * 100) + 1;
-
-            await sock.sendMessage(jid, { text: `🏳️‍🌈 El usuario \`${targetName}\` es un **${porcentaje}%** gei.` }, { quoted: m });
-        }
     }
+    
+    
 ];
