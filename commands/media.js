@@ -72,6 +72,7 @@ module.exports = [
                     if (isAnimated) {
                         const tempWebp = path.join(__dirname, `../media/temp_${Date.now()}.webp`);
                         const tempMp4 = path.join(__dirname, `../media/temp_${Date.now()}.mp4`);
+                        if (!fs.existsSync(path.join(__dirname, '../media'))) fs.mkdirSync(path.join(__dirname, '../media'));
                         fs.writeFileSync(tempWebp, buffer);
 
                         const ffmpegCmd = `ffmpeg -i ${tempWebp} -pix_fmt yuv420p -vf "scale=truncate(iw/2)*2:truncate(ih/2)*2" ${tempMp4}`;
