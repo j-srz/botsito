@@ -1,99 +1,56 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = [
     {
         name: '.n',
         execute: async (sock, m, body) => {
             const jid = m.key.remoteJid;
-
-            // 1. Verificar si hay un mensaje citado
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            if (!quoted) {
-                return await sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
-            }
+            if (!quoted) return await sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
 
-            // 2. Extraer el texto personalizado (lo que escribes después de .n)
             const customText = body.substring(2).trim();
-
-            // 3. Detectar si el mensaje citado tiene multimedia
-            const type = Object.keys(quoted)[0]; // Obtiene el tipo (imageMessage, videoMessage, etc.)
+            const type = Object.keys(quoted)[0];
             const isMedia = ['imageMessage', 'videoMessage', 'stickerMessage', 'documentMessage', 'audioMessage'].includes(type);
 
             if (isMedia) {
                 try {
-                    // 4. Descargar la media (esto es lo que consume RAM, pero solo cuando se solicita)
-                    const buffer = await downloadMediaMessage(
-                        { message: quoted },
-                        'buffer',
-                        {},
-                        { 
-                            logger: console,
-                            reuploadRequest: sock.updateMediaMessage 
-                        }
-                    );
-
-                    // 5. Preparar el contenido a enviar
+                    const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
                     const caption = customText || quoted[type]?.caption || '';
-                    const messageOptions = { quoted: m };
-
-                    if (type === 'imageMessage') {
-                        await sock.sendMessage(jid, { image: buffer, caption }, messageOptions);
-                    } else if (type === 'videoMessage') {
-                        await sock.sendMessage(jid, { video: buffer, caption }, messageOptions);
-                    } else if (type === 'stickerMessage') {
-                        await sock.sendMessage(jid, { sticker: buffer }, messageOptions);
-                    } else {
-                        // Para otros archivos (documentos, etc.)
-                        await sock.sendMessage(jid, { document: buffer, caption, mimetype: quoted[type].mimetype, fileName: 'archivo' }, messageOptions);
-                    }
-
+                    if (type === 'imageMessage') await sock.sendMessage(jid, { image: buffer, caption }, { quoted: m });
+                    else if (type === 'videoMessage') await sock.sendMessage(jid, { video: buffer, caption }, { quoted: m });
+                    else if (type === 'stickerMessage') await sock.sendMessage(jid, { sticker: buffer }, { quoted: m });
+                    else await sock.sendMessage(jid, { document: buffer, caption, mimetype: quoted[type].mimetype, fileName: 'archivo' }, { quoted: m });
                 } catch (err) {
-                    console.error('Error al descargar media:', err);
-                    await sock.sendMessage(jid, { text: '❌ Error al procesar la multimedia.' }, { quoted: m });
+                    await sock.sendMessage(jid, { text: '❌ Error al procesar multimedia.' }, { quoted: m });
                 }
             } else {
-                // 6. Si solo es texto
                 const quotedText = quoted.conversation || quoted.extendedTextMessage?.text || '';
-                const caption = customText || quotedText || '';
-                await sock.sendMessage(jid, { text: caption }, { quoted: m });
+                await sock.sendMessage(jid, { text: customText || quotedText || '' }, { quoted: m });
             }
         }
     },
     {
-        name: '.s', // Comando corto para sticker
+        name: '.s',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const messageType = Object.keys(m.message)[0];
-            
-            // Verificamos si es un mensaje de media o si cita uno
-            const isQuoted = messageType === 'extendedTextMessage' && m.message.extendedTextMessage.contextInfo?.quotedMessage;
-            const quotedMsg = isQuoted ? m.message.extendedTextMessage.contextInfo.quotedMessage : null;
-            const mediaMsg = quotedMsg || m.message;
-            
-            const type = Object.keys(mediaMsg)[0];
+            const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage || m.message;
+            const type = Object.keys(quoted)[0];
 
             if (type === 'imageMessage' || type === 'videoMessage') {
                 try {
-                    const buffer = await downloadMediaMessage(
-                        { message: mediaMsg },
-                        'buffer',
-                        {},
-                        { reuploadRequest: sock.updateMediaMessage }
-                    );
-
+                    const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
                     const sticker = new Sticker(buffer, {
-                        pack: 'Rex Bot Pack', 
-                        author: 'Botsito',
+                        pack: 'Rex Bot Pack 🦖',
+                        author: 'Jesús Suarez',
                         type: StickerTypes.FULL,
-                        categories: ['🤩', '🎉'],
-                        quality: 50 // Bajamos un poco la calidad para que la Rasp lo procese rápido
+                        quality: 50
                     });
-
-                    const stickerBuffer = await sticker.toBuffer();
-                    await sock.sendMessage(jid, { sticker: stickerBuffer }, { quoted: m });
-                } catch (err) {
-                    console.error(err);
+                    await sock.sendMessage(jid, { sticker: await sticker.toBuffer() }, { quoted: m });
+                } catch (e) {
                     await sock.sendMessage(jid, { text: '❌ Error al crear sticker.' });
                 }
             } else {
@@ -102,22 +59,72 @@ module.exports = [
         }
     },
     {
-        name: '.img', // Sticker a imagen
+        name: '.img', 
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const quotedInfo = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             
-            if (quotedInfo?.stickerMessage) {
-                const buffer = await downloadMediaMessage(
-                    { message: quotedInfo },
-                    'buffer',
-                    {},
-                    { reuploadRequest: sock.updateMediaMessage }
-                );
-                await sock.sendMessage(jid, { image: buffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
+            if (quoted?.stickerMessage) {
+                const isAnimated = quoted.stickerMessage.isAnimated;
+                try {
+                    const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+
+                    if (isAnimated) {
+                        const tempWebp = path.join(__dirname, `../media/temp_${Date.now()}.webp`);
+                        const tempMp4 = path.join(__dirname, `../media/temp_${Date.now()}.mp4`);
+                        fs.writeFileSync(tempWebp, buffer);
+
+                        const ffmpegCmd = `ffmpeg -i ${tempWebp} -pix_fmt yuv420p -vf "scale=truncate(iw/2)*2:truncate(ih/2)*2" ${tempMp4}`;
+                        exec(ffmpegCmd, async (error) => {
+                            if (error) return await sock.sendMessage(jid, { text: '❌ Error en conversión animada.' });
+
+                            await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
+                            if (fs.existsSync(tempWebp)) fs.unlinkSync(tempWebp);
+                            if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
+                        });
+                    } else {
+                        await sock.sendMessage(jid, { image: buffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
+                    }
+                } catch (e) { await sock.sendMessage(jid, { text: '❌ Error al procesar sticker.' }); }
             } else {
                 await sock.sendMessage(jid, { text: 'Responde a un sticker.' });
             }
+        }
+    },
+    {
+        name: '.shh',
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo || !quotedInfo.participant) return;
+
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
+
+            await sock.sendMessage(jid, { text: `@${targetNumber} NO SPAM O BAN!! 🤫`, mentions: [targetJid] });
+            await sock.sendMessage(jid, { 
+                react: { text: '⚠️', key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } 
+            });
+        }
+    },
+    {
+        name: '.joto',
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+
+            if (!quotedInfo || !quotedInfo.participant) {
+                const senderName = m.pushName || 'Alguien';
+                return await sock.sendMessage(jid, { text: `che joto \`${senderName}\` mejor responde a alguien.` }, { quoted: m });
+            }
+
+            const targetJid = quotedInfo.participant;
+            const groupMetadata = await sock.groupMetadata(jid);
+            const participant = groupMetadata.participants.find(p => p.id === targetJid);
+            const targetName = participant?.name || participant?.notify || targetJid.split('@')[0].split(':')[0];
+            const porcentaje = Math.floor(Math.random() * 100) + 1;
+
+            await sock.sendMessage(jid, { text: `🏳️‍🌈 El usuario \`${targetName}\` es un **${porcentaje}%** gei.` }, { quoted: m });
         }
     }
 ];
