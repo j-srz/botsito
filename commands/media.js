@@ -59,38 +59,48 @@ module.exports = [
             if (quoted?.stickerMessage) {
                 const isAnimated = quoted.stickerMessage.isAnimated;
                 try {
+                    // Reaccionamos para avisar que está en proceso
+                    await sock.sendMessage(jid, { react: { text: '⏳', key: m.key } });
+
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
                     if (isAnimated) {
                         const tempGif = path.resolve(__dirname, `../media/temp_${Date.now()}.gif`);
                         const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
                         
-                        // 1. Usamos SHARP para convertir WebP animado a GIF (Sharp sí tiene el codec)
-                        await sharp(buffer, { animated: true }).toFile(tempGif);
+                        // 1. SHARP OPTIMIZADO: Reducimos el tamaño a la mitad para que sea 4 veces más rápido
+                        await sharp(buffer, { animated: true })
+                            .resize(256, 256, { fit: 'contain' }) 
+                            .gif()
+                            .toFile(tempGif);
 
-                        // 2. Usamos FFmpeg para pasar de GIF a MP4 (WhatsApp prefiere MP4)
-                        const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -movflags faststart -pix_fmt yuv420p -vf "scale=truncate(iw/2)*2:truncate(ih/2)*2" "${tempMp4}"`;
+                        // 2. FFMPEG TURBO: 
+                        // -threads 2: No satures todos los núcleos
+                        // -crf 35: Bajamos un poco la calidad para ganar velocidad
+                        const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -threads 2 -movflags faststart -pix_fmt yuv420p -vf "fps=12,scale=256:-2" -c:v libx264 -preset ultrafast -crf 35 "${tempMp4}"`;
 
-                        exec(ffmpegCmd, async (error) => {
+                        exec(ffmpegCmd, { timeout: 30000 }, async (error, stdout, stderr) => {
                             if (error) {
-                                // Si FFmpeg falla, intentamos mandar el GIF directamente
-                                await sock.sendMessage(jid, { video: fs.readFileSync(tempGif), gifPlayback: true, caption: '> Convertido a GIF 🦖' }, { quoted: m });
+                                console.error('FFmpeg Error:', stderr);
+                                // Plan B: Mandar el GIF si el MP4 falla o tarda mucho
+                                await sock.sendMessage(jid, { video: fs.readFileSync(tempGif), gifPlayback: true, caption: '> Enviado como GIF (Raspberry lenta) 🦖' }, { quoted: m });
                             } else {
                                 await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
                             }
                             
-                            // Limpieza
-                            if (fs.existsSync(tempGif)) fs.unlinkSync(tempGif);
-                            if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
+                            // Borrado de archivos
+                            setTimeout(() => {
+                                if (fs.existsSync(tempGif)) fs.unlinkSync(tempGif);
+                                if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
+                            }, 5000);
                         });
                     } else {
-                        // Sticker estático: Sharp lo convierte a JPG/PNG rápido
                         const imgBuffer = await sharp(buffer).jpeg().toBuffer();
                         await sock.sendMessage(jid, { image: imgBuffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
                     }
                 } catch (e) { 
                     console.error(e);
-                    await sock.sendMessage(jid, { text: '❌ Error al procesar (Sticker muy pesado).' }); 
+                    await sock.sendMessage(jid, { text: '❌ Error: El sticker es demasiado complejo para mi procesador.' }); 
                 }
             } else {
                 await sock.sendMessage(jid, { text: 'Responde a un sticker.' });
