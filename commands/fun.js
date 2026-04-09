@@ -53,21 +53,27 @@ module.exports = [
         name: '.kiss',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const quoted = m.message?.extendedTextMessage?.contextInfo;
-            if (!quoted) return sock.sendMessage(jid, { text: 'Pendejo' }, { quoted: m });
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo) return sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
 
-            const target = quoted.participant.split('@')[0];
-            const sender = m.pushName || 'Alguien';
+            const targetJid = quotedInfo.participant; // ID del que recibe el beso
+            const targetNumber = targetJid.split('@')[0].split(':')[0]; // Número limpio
+            const senderName = m.pushName || 'Alguien';
             const videoPath = path.join(__dirname, '../media/kiss.mp4');
 
             try {
                 await sock.sendMessage(jid, { 
                     video: fs.readFileSync(videoPath), 
                     gifPlayback: true, 
-                    caption: `\`${sender}\` _besó a_ \`${target}\` 💋` 
+                    // Usamos @número y lo metemos en 'mentions' para que se vea el nombre
+                    caption: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
+                    mentions: [targetJid] 
                 }, { quoted: m });
             } catch (e) { 
-                await sock.sendMessage(jid, { text: `\`${sender}\` _besó a_ \`${target}\` 💋` }, { quoted: m }); 
+                await sock.sendMessage(jid, { 
+                    text: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
+                    mentions: [targetJid]
+                }, { quoted: m }); 
             }
         }
     },
