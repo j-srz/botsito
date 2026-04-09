@@ -8,17 +8,20 @@ const isAdmin = async (sock, jid, user) => {
     try {
         if (!jid.endsWith('@g.us')) return false;
 
-        // "Limpiamos" el ID del usuario (quitamos el :1, :2, etc. de Baileys)
-        const cleanUser = user.split(':')[0] + (user.includes('@') ? '@' + user.split('@')[1] : '');
-
         const groupMetadata = await sock.groupMetadata(jid);
         const participants = groupMetadata.participants;
 
-        // Buscamos al usuario limpio en la lista
-        const participant = participants.find(p => p.id === cleanUser);
+        // Buscamos al participante que coincida con el ID enviado (sea LID o Número)
+        const participant = participants.find(p => p.id === user);
 
-        return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
+        // Verificamos si tiene rango de admin
+        if (participant && (participant.admin === 'admin' || participant.admin === 'superadmin')) {
+            return true;
+        }
+
+        return false;
     } catch (e) {
+        console.error('Error en isAdmin:', e);
         return false;
     }
 };
