@@ -19,14 +19,16 @@ module.exports = [
         name: '.vtalv',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const quoted = m.message?.extendedTextMessage?.contextInfo;
-            if (!quoted) return sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo || !quotedInfo.participant) return sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
 
-            const target = quoted.participant.split('@')[0];
-            const sender = m.pushName || m.key.participant?.split('@')[0] || 'Alguien';
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
+            const senderName = m.pushName || 'Alguien';
             
             await sock.sendMessage(jid, { 
-                text: `\`${sender}\` _dice:_ \`${target}\` vtalv ⊂(◉‿◉)つ` 
+                text: `\`${senderName}\` _dice:_ @${targetNumber} vtalv ⊂(◉‿◉)つ`,
+                mentions: [targetJid]
             }, { quoted: m });
         }
     },
@@ -34,17 +36,19 @@ module.exports = [
         name: '.wassaa',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const quoted = m.message?.extendedTextMessage?.contextInfo;
-            if (!quoted) return;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo || !quotedInfo.participant) return;
 
-            const target = quoted.participant.split('@')[0];
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
             const videoUrl = 'https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHhzbTZjNTk0N3o0aXQ4bTRmaTV2djFvYm04N3Y1MzVxOTFkNjF4byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3hxk2aOwWmfOU/giphy.mp4';
             
             try {
                 await sock.sendMessage(jid, { 
                     video: { url: videoUrl }, 
                     gifPlayback: true, 
-                    caption: `\`${target}\` wassaaa!!!` 
+                    caption: `@${targetNumber} wassaaa!!!`,
+                    mentions: [targetJid]
                 }, { quoted: m });
             } catch (e) { await sock.sendMessage(jid, { text: 'Error con el video.' }); }
         }
@@ -53,15 +57,14 @@ module.exports = [
         name: '.kiss',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            // Extraemos la info del mensaje citado
             const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
             
             if (!quotedInfo || !quotedInfo.participant) {
-                return await sock.sendMessage(jid, { text: 'Responde a un mensaje para dar un beso. 💋' }, { quoted: m });
+                return await sock.sendMessage(jid, { text: 'Pendejo, responde a alguien.' }, { quoted: m });
             }
 
-            const targetJid = quotedInfo.participant; // ID completo (ej: 128316476502070@lid)
-            const targetMention = targetJid.split('@')[0]; // Solo el ID numérico
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
             const senderName = m.pushName || 'Alguien';
             const videoPath = path.join(__dirname, '../media/kiss.mp4');
 
@@ -69,14 +72,12 @@ module.exports = [
                 await sock.sendMessage(jid, { 
                     video: fs.readFileSync(videoPath), 
                     gifPlayback: true, 
-                    // El @ en el texto junto con 'mentions' hace que WhatsApp muestre el nombre
-                    caption: `\`${senderName}\` _besó a_ @${targetMention} 💋`,
+                    caption: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
                     mentions: [targetJid] 
                 }, { quoted: m });
             } catch (e) { 
-                // Si falla el video, manda texto
                 await sock.sendMessage(jid, { 
-                    text: `\`${senderName}\` _besó a_ @${targetMention} 💋`,
+                    text: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
                     mentions: [targetJid]
                 }, { quoted: m }); 
             }
@@ -86,12 +87,17 @@ module.exports = [
         name: '.tickle',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
-            const quoted = m.message?.extendedTextMessage?.contextInfo;
-            if (!quoted) return;
+            const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+            if (!quotedInfo || !quotedInfo.participant) return;
 
-            const target = quoted.participant.split('@')[0];
-            const sender = m.pushName || 'Alguien';
-            await sock.sendMessage(jid, { text: `*${sender} hace cosquillas a ${target}*` }, { quoted: m });
+            const targetJid = quotedInfo.participant;
+            const targetNumber = targetJid.split('@')[0].split(':')[0];
+            const senderName = m.pushName || 'Alguien';
+            
+            await sock.sendMessage(jid, { 
+                text: `*${senderName} hace cosquillas a* @${targetNumber}`,
+                mentions: [targetJid]
+            }, { quoted: m });
         }
     },
     {
@@ -107,7 +113,8 @@ module.exports = [
             let list = `*Llamando rexitos*\n╔ ========\n`;
 
             for (let participant of groupMetadata.participants) {
-                list += `║ 🦖 @${participant.id.split('@')[0]}\n`;
+                const num = participant.id.split('@')[0].split(':')[0];
+                list += `║ 🦖 @${num}\n`;
             }
 
             list += `╚ ========\n*Llamados*${getLegend()}`;
@@ -120,18 +127,19 @@ module.exports = [
             const jid = m.key.remoteJid;
             await sock.sendMessage(jid, { react: { text: '🚬', key: m.key } });
 
-            const sender = m.key.participant || jid;
+            const senderJid = m.key.participant || jid;
+            const senderNumber = senderJid.split('@')[0].split(':')[0];
             const gifUrl = 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExank0a3B5ODl2dTJlbm5rMGw1MzVvcWswbzVnY2twYmNneDF2NmZkaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KpAPQVW9lWnWU/giphy.gif';
             
             try {
                 await sock.sendMessage(jid, { 
                     video: { url: gifUrl }, 
                     gifPlayback: true, 
-                    caption: `💨 @${sender.split('@')[0]} ${getLegend()}`,
-                    mentions: [sender]
+                    caption: `💨 @${senderNumber} ${getLegend()}`,
+                    mentions: [senderJid]
                 }, { quoted: m });
             } catch (e) { 
-                await sock.sendMessage(jid, { text: `💨 @${sender.split('@')[0]} dándose un toque...` }); 
+                await sock.sendMessage(jid, { text: `💨 @${senderNumber} dándose un toque...`, mentions: [senderJid] }); 
             }
         }
     },
@@ -154,7 +162,7 @@ module.exports = [
                 fecha: new Date().toLocaleString('es-MX'),
                 admin_nombre: m.pushName || 'Admin',
                 admin_id: m.key.participant || jid,
-                ganador_nombre: 'Usuario', // Baileys no trae el pushname del citado fácilmente sin store
+                ganador_nombre: 'Usuario', 
                 ganador_id: quotedInfo.participant,
                 monto: amount,
                 grupo: (await sock.groupMetadata(jid)).subject
@@ -195,14 +203,17 @@ module.exports = [
 
                 const ranking = Object.entries(stats).sort((a, b) => b[1].victorias - a[1].victorias);
                 let res = `*📊 RESUMEN DE SUBASTAS*\n_Top Ganadores_\n\n`;
+                const allMentions = [];
                 
                 ranking.forEach(([id, user], i) => {
                     const medalla = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤';
-                    res += `${medalla} *${id.split('@')[0]}*\n`;
-                    res += `   └ Wins: ${user.victorias} | Total: $${user.total}\n`;
+                    const num = id.split('@')[0].split(':')[0];
+                    res += `${medalla} @${num}\n`;
+                    res += `   └ Wins: ${user.victorias} | Total: $${user.total}\n`;
+                    allMentions.push(id);
                 });
 
-                await sock.sendMessage(jid, { text: res + getLegend() }, { quoted: m });
+                await sock.sendMessage(jid, { text: res + getLegend(), mentions: allMentions }, { quoted: m });
             } catch (err) { await sock.sendMessage(jid, { text: 'Error al procesar resumen.' }); }
         }
     }
