@@ -9,6 +9,18 @@ const sharp = require('sharp');
 let processingQueue = [];
 let isProcessing = false;
 
+// Función para generar la barra visual de la fila
+const generarBarraFila = (posicion) => {
+    const limiteVisual = 10;
+    let barra = "";
+    for (let i = 1; i <= limiteVisual; i++) {
+        if (i < posicion) barra += "[🟥]";      // Lugares ocupados
+        else if (i === posicion) barra += "[🚺]"; // Tu lugar
+        else barra += "[🟩]";                  // Lugares libres
+    }
+    return barra;
+};
+
 const processNext = async () => {
     if (processingQueue.length === 0 || isProcessing) return;
 
@@ -23,22 +35,36 @@ const processNext = async () => {
     } finally {
         processingQueue.shift(); 
         isProcessing = false;
-        // Pequeño delay para que la Rasp respire entre procesos
         setTimeout(processNext, 1000); 
     }
 };
 
 const addToQueue = async (sock, m, body, mediaData, task) => {
     const jid = m.key.remoteJid;
-    
     processingQueue.push({ task, sock, m, body, mediaData });
 
-    // Si ya hay algo procesándose o hay gente en fila, avisamos
     if (isProcessing || processingQueue.length > 1) {
-        const posicion = processingQueue.length - 1;
-        await sock.sendMessage(jid, { 
-            text: `⏳ *Petición en espera...*\n\n*Posición:* ${posicion}\n*Cola total:* ${processingQueue.length}\n\n_Tu turno llegará automáticamente. 🦖_` 
-        }, { quoted: m });
+        const posicion = processingQueue.length;
+        const total = processingQueue.length;
+        const barraVisual = generarBarraFila(posicion);
+
+        // Formato visual solicitado
+        const mensajeEspera = 
+`┌── [ 🦖 REX BOT BUSY ] ──┐
+🚨 *PERESE* 🚨
+🎦 *ESTADO:* 🛠️ Chambeando...
+
+-------------------------
+#️⃣ *FILA DE ESPERA:*
+${barraVisual}
+ 1   2   3   4   5   6   7   8   9  10
+      ^ _¡Tú estás aquí!_
+-------------------------
+
+*️⃣ *TU POSICIÓN:* ${posicion}
+⏬ *TOTAL EN COLA:* ${total}`;
+
+        await sock.sendMessage(jid, { text: mensajeEspera }, { quoted: m });
     }
 
     processNext();
@@ -46,7 +72,6 @@ const addToQueue = async (sock, m, body, mediaData, task) => {
 
 // --- TAREAS ---
 
-// .n (Directo, sin cola para no trabar el chat)
 const executeN = async (sock, m, body) => {
     const jid = m.key.remoteJid;
     const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -68,7 +93,6 @@ const executeN = async (sock, m, body) => {
     }
 };
 
-// .s (Sticker)
 const stickerTask = async (sock, m, body, mediaData) => {
     const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
     const sticker = new Sticker(buffer, {
@@ -80,7 +104,6 @@ const stickerTask = async (sock, m, body, mediaData) => {
     await sock.sendMessage(m.key.remoteJid, { sticker: await sticker.toBuffer() }, { quoted: m });
 };
 
-// .img (Imagen/GIF)
 const imageTask = async (sock, m, body, mediaData) => {
     const jid = m.key.remoteJid;
     const isAnimated = mediaData.stickerMessage?.isAnimated;
@@ -114,7 +137,6 @@ const imageTask = async (sock, m, body, mediaData) => {
     }
 };
 
-// --- EXPORTACIÓN ---
 module.exports = [
     {
         name: '.n',
@@ -126,8 +148,6 @@ module.exports = [
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage || m.message;
             const type = Object.keys(quoted)[0];
             if (type !== 'imageMessage' && type !== 'videoMessage') return;
-            
-            // Pasamos el mensaje de media formateado correctamente
             await addToQueue(sock, m, null, { [type]: quoted[type] }, stickerTask);
         }
     },
@@ -136,7 +156,6 @@ module.exports = [
         execute: async (sock, m) => {
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quoted?.stickerMessage) return;
-            
             await addToQueue(sock, m, null, { stickerMessage: quoted.stickerMessage }, imageTask);
         }
     }
