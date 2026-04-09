@@ -70,46 +70,40 @@ module.exports = [
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
                     if (isAnimated) {
-                        // Usamos path.resolve para no tener errores de rutas en Linux
                         const tempWebp = path.resolve(__dirname, `../media/temp_${Date.now()}.webp`);
                         const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
                         
+                        if (!fs.existsSync(path.dirname(tempWebp))) fs.mkdirSync(path.dirname(tempWebp), { recursive: true });
                         fs.writeFileSync(tempWebp, buffer);
 
-                        // COMANDO BLINDADO PARA RASPBERRY:
-                        // -t 10: Límite de 10 segundos para no saturar el CPU
-                        // scale y pad: Aseguran un video de 512x512 perfecto para WA
-                        const ffmpegCmd = `ffmpeg -y -i "${tempWebp}" -t 10 -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -preset ultrafast "${tempMp4}"`;
+                        // FIX PARA RASPBERRY: Forzamos el decodificador libwebp antes del input (-vcodec libwebp)
+                        const ffmpegCmd = `ffmpeg -y -vcodec libwebp -i "${tempWebp}" -t 10 -vf "fps=15,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -preset ultrafast "${tempMp4}"`;
 
                         exec(ffmpegCmd, async (error, stdout, stderr) => {
                             if (error) {
-                                console.error('FFmpeg Error Stderr:', stderr);
-                                return await sock.sendMessage(jid, { text: '❌ Error en conversión. Intenta con otro sticker.' });
+                                console.error('FFmpeg Error Detallado:', stderr);
+                                return await sock.sendMessage(jid, { text: '❌ Error en conversión animada.' });
                             }
 
-                            await sock.sendMessage(jid, { 
-                                video: fs.readFileSync(tempMp4), 
-                                gifPlayback: true, 
-                                caption: '> Sticker animado convertido 🦖' 
-                            }, { quoted: m });
-
+                            await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
+                            
                             // Borrado seguro
                             setTimeout(() => {
                                 if (fs.existsSync(tempWebp)) fs.unlinkSync(tempWebp);
                                 if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
-                            }, 3000);
+                            }, 5000);
                         });
                     } else {
                         await sock.sendMessage(jid, { image: buffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
                     }
-                } catch (e) {
-                    await sock.sendMessage(jid, { text: '❌ Error al procesar el archivo.' });
+                } catch (e) { 
+                    console.error(e);
+                    await sock.sendMessage(jid, { text: '❌ Error al procesar sticker.' }); 
                 }
             } else {
                 await sock.sendMessage(jid, { text: 'Responde a un sticker.' });
             }
         }
-    }
-    
-    
+    },
+
 ];
