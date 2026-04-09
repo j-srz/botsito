@@ -3,22 +3,33 @@ const { getLegend } = require('../utils/helpers');
 module.exports = [
     {
         name: '.user',
-        execute: async (msg) => {
-            const contact = await msg.getContact();
-            const chat = await msg.getChat();
-            let info = `*Usuario:* ${contact.pushname || 'Sin nombre'}\n*Número:* ${contact.number}\n`;
-            if (chat.isGroup) {
-                const part = chat.participants.find(p => p.id._serialized === contact.id._serialized);
-                let rol = part?.isAdmin ? 'Administrador' : (part?.isSuperAdmin ? 'Super Administrador' : 'Miembro');
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            const sender = m.key.participant || m.key.remoteJid;
+            const pushName = m.pushName || 'Sin nombre';
+            const number = sender.split('@')[0];
+
+            let info = `*Usuario:* ${pushName}\n*Número:* ${number}\n`;
+
+            if (jid.endsWith('@g.us')) {
+                const groupMetadata = await sock.groupMetadata(jid);
+                const participant = groupMetadata.participants.find(p => p.id === sender);
+                
+                let rol = 'Miembro';
+                if (participant.admin === 'admin') rol = 'Administrador';
+                if (participant.admin === 'superadmin') rol = 'Super Administrador';
+                
                 info += `*Rol:* ${rol}`;
             }
-            await msg.reply(info);
+
+            await sock.sendMessage(jid, { text: info }, { quoted: m });
         }
     },
 
     {
         name: '.cm',
-        execute: async (msg) => {
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
             let commandsList = '*📜 LISTA DE COMANDOS ACTUALES*\n\n';
 
             commandsList += '*✨ INTERACCIÓN*\n';
@@ -43,17 +54,21 @@ module.exports = [
             commandsList += '• `.promote` - Sube a alguien a Administrador.\n';
             commandsList += '• `.demote` - Quita el rango de Administrador.\n';
             commandsList += '• `.close [tiempo]` - Cierra el grupo (ej: .close 5m).\n';
-            commandsList += '• `.open` - Abre el grupo para todos.\n';
+            commandsList += '• `.open` - Abre el grupo para todos.\n\n';
+            
+            commandsList += `*ID del Chat:* \`${jid}\``;
 
-            await msg.reply(commandsList);
+            await sock.sendMessage(jid, { text: commandsList + getLegend() }, { quoted: m });
         }
     },
+
     {
         name: '.id',
-        execute: async (msg) => {
-            const chat = await msg.getChat();
-            // Esto te responde con el ID exacto que debes copiar a tu .env
-            await msg.reply(`*🆔 ID DE ESTE CHAT:*\n\n\`${chat.id._serialized}\``);
+        execute: async (sock, m) => {
+            const jid = m.key.remoteJid;
+            await sock.sendMessage(jid, { 
+                text: `*🆔 ID DE ESTE CHAT:*\n\n\`${jid}\`` 
+            }, { quoted: m });
         }
-    },
+    }
 ];
