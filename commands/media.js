@@ -76,18 +76,22 @@ module.exports = [
                         if (!fs.existsSync(path.dirname(tempWebp))) fs.mkdirSync(path.dirname(tempWebp), { recursive: true });
                         fs.writeFileSync(tempWebp, buffer);
 
-                        // FIX PARA RASPBERRY: Forzamos el decodificador libwebp antes del input (-vcodec libwebp)
-                        const ffmpegCmd = `ffmpeg -y -vcodec libwebp -i "${tempWebp}" -t 10 -vf "fps=15,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -preset ultrafast "${tempMp4}"`;
+                        // COMANDO SIMPLIFICADO: Quitamos el -vcodec libwebp que daba error
+                        // Dejamos que FFmpeg detecte el formato solo, pero forzamos el output compatible
+                        const ffmpegCmd = `ffmpeg -y -i "${tempWebp}" -pix_fmt yuv420p -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2" -preset ultrafast "${tempMp4}"`;
 
                         exec(ffmpegCmd, async (error, stdout, stderr) => {
                             if (error) {
                                 console.error('FFmpeg Error Detallado:', stderr);
-                                return await sock.sendMessage(jid, { text: '❌ Error en conversión animada.' });
+                                return await sock.sendMessage(jid, { text: '❌ El sticker es muy pesado para la Rasp.' });
                             }
 
-                            await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
+                            await sock.sendMessage(jid, { 
+                                video: fs.readFileSync(tempMp4), 
+                                gifPlayback: true, 
+                                caption: '> Sticker animado convertido 🦖' 
+                            }, { quoted: m });
                             
-                            // Borrado seguro
                             setTimeout(() => {
                                 if (fs.existsSync(tempWebp)) fs.unlinkSync(tempWebp);
                                 if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
@@ -104,6 +108,5 @@ module.exports = [
                 await sock.sendMessage(jid, { text: 'Responde a un sticker.' });
             }
         }
-    },
-
+    }
 ];
