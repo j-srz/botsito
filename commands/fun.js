@@ -53,11 +53,15 @@ module.exports = [
         name: '.kiss',
         execute: async (sock, m) => {
             const jid = m.key.remoteJid;
+            // Extraemos la info del mensaje citado
             const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
-            if (!quotedInfo) return sock.sendMessage(jid, { text: 'Responde a un mensaje.' }, { quoted: m });
+            
+            if (!quotedInfo || !quotedInfo.participant) {
+                return await sock.sendMessage(jid, { text: 'Responde a un mensaje para dar un beso. 💋' }, { quoted: m });
+            }
 
-            const targetJid = quotedInfo.participant; // ID del que recibe el beso
-            const targetNumber = targetJid.split('@')[0].split(':')[0]; // Número limpio
+            const targetJid = quotedInfo.participant; // ID completo (ej: 128316476502070@lid)
+            const targetMention = targetJid.split('@')[0]; // Solo el ID numérico
             const senderName = m.pushName || 'Alguien';
             const videoPath = path.join(__dirname, '../media/kiss.mp4');
 
@@ -65,13 +69,14 @@ module.exports = [
                 await sock.sendMessage(jid, { 
                     video: fs.readFileSync(videoPath), 
                     gifPlayback: true, 
-                    // Usamos @número y lo metemos en 'mentions' para que se vea el nombre
-                    caption: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
+                    // El @ en el texto junto con 'mentions' hace que WhatsApp muestre el nombre
+                    caption: `\`${senderName}\` _besó a_ @${targetMention} 💋`,
                     mentions: [targetJid] 
                 }, { quoted: m });
             } catch (e) { 
+                // Si falla el video, manda texto
                 await sock.sendMessage(jid, { 
-                    text: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
+                    text: `\`${senderName}\` _besó a_ @${targetMention} 💋`,
                     mentions: [targetJid]
                 }, { quoted: m }); 
             }
