@@ -127,17 +127,21 @@ module.exports = [
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
 
-      if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
+      // 1. Verificación de Admin (Si no soy admin, WhatsApp ignora la orden)
+      if (!jid.endsWith("@g.us")) return;
+      if (!(await isAdmin(sock, jid, sender))) return;
 
       const quoted = m.message?.extendedTextMessage?.contextInfo;
       if (!quoted || !quoted.stanzaId) {
         return await sock.sendMessage(jid, { text: "❌ Responde al mensaje que quieres fijar." });
       }
 
+      // 2. Mapeo de duración para Grupos (WhatsApp usa índices 1, 2, 3)
       const args = body.split(" ");
-      let duration = 86400; 
-      if (args[1] === "7d") duration = 604800;
-      if (args[1] === "30d") duration = 2592000;
+      let durationIndex = 1; // Por defecto 24 horas
+      
+      if (args[1] === "7d") durationIndex = 2;
+      if (args[1] === "30d") durationIndex = 3;
 
       const pinKey = {
         remoteJid: jid,
@@ -147,34 +151,23 @@ module.exports = [
       };
 
       try {
-        await sock.sendMessage(jid, { pin: { key: pinKey, type: 1, time: duration } });
+        // 3. Envío del mensaje de Pin
+        await sock.sendMessage(jid, { 
+          pin: { 
+            key: pinKey, 
+            type: 1, // 1 para fijar
+            time: durationIndex 
+          } 
+        });
+
+        // Guardar para el unpin automático
         if (!fs.existsSync(path.join(__dirname, "../data"))) fs.mkdirSync(path.join(__dirname, "../data"));
         fs.writeFileSync(pinDataPath, JSON.stringify(pinKey));
+
         await sock.sendMessage(jid, { react: { text: "📌", key: m.key } });
       } catch (err) {
-        await sock.sendMessage(jid, { text: "❌ Error al fijar. Asegúrate de que soy admin." });
-      }
-    },
-  },
-  {
-    name: ".unpin",
-    execute: async (sock, m) => {
-      const jid = m.key.remoteJid;
-      const sender = m.key.participant || m.key.remoteJid;
-
-      if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
-
-      if (!fs.existsSync(pinDataPath)) {
-        return await sock.sendMessage(jid, { text: "❌ No tengo registro de ningún mensaje fijado." });
-      }
-
-      try {
-        const lastPinKey = JSON.parse(fs.readFileSync(pinDataPath, "utf-8"));
-        await sock.sendMessage(jid, { pin: { key: lastPinKey, type: 2 } });
-        fs.unlinkSync(pinDataPath);
-        await sock.sendMessage(jid, { react: { text: "🔓", key: m.key } });
-      } catch (err) {
-        await sock.sendMessage(jid, { text: "❌ No pude quitar el fijado." });
+        console.error("Error al fijar:", err);
+        await sock.sendMessage(jid, { text: "❌ Error técnico al fijar. ¿El bot es Administrador?" });
       }
     },
   },
