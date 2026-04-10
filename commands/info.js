@@ -1,4 +1,4 @@
-const { getLegend } = require("../utils/helpers");
+const { getLegend } = require("../utils/functions"); // Asegúrate de que la ruta apunte a tus utilidades
 
 module.exports = [
   {
@@ -9,7 +9,9 @@ module.exports = [
       const pushName = m.pushName || "Sin nombre";
       const number = sender.split("@")[0];
 
-      let info = `*Usuario:* ${pushName}\n*Número:* ${number}\n`;
+      let info = `*👤 INFO DE USUARIO*\n\n`;
+      info += `*Usuario:* ${pushName}\n`;
+      info += `*Número:* ${number}\n`;
 
       if (jid.endsWith("@g.us")) {
         const groupMetadata = await sock.groupMetadata(jid);
@@ -18,13 +20,13 @@ module.exports = [
         );
 
         let rol = "Miembro";
-        if (participant.admin === "admin") rol = "Administrador";
-        if (participant.admin === "superadmin") rol = "Super Administrador";
+        if (participant?.admin === "admin") rol = "Administrador";
+        if (participant?.admin === "superadmin") rol = "Super Administrador";
 
         info += `*Rol:* ${rol}`;
       }
 
-      await sock.sendMessage(jid, { text: info }, { quoted: m });
+      await sock.sendMessage(jid, { text: info + getLegend(sock) }, { quoted: m });
     },
   },
 
@@ -32,41 +34,36 @@ module.exports = [
     name: ".cm",
     execute: async (sock, m) => {
       const jid = m.key.remoteJid;
-      let commandsList = "*📜 LISTA DE COMANDOS ACTUALES*\n\n";
+      let commandsList = "*📜 MENÚ DE COMANDOS REX*\n\n";
 
       commandsList += "*✨ INTERACCIÓN*\n";
-      commandsList += "• `.n` - Reenvía/Edita texto de imagen o video.\n";
+      commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
       commandsList += "• `.user` - Muestra tu info y rango.\n";
+      commandsList += "• `.id` - Obtiene ID del chat (Consola).\n";
       commandsList += "• `.joto` - Test de jotez al azar 🏳️‍🌈.\n";
-      commandsList += "• `.ping` - Verifica si el bot está activo.\n";
-      commandsList += "• `.vtalv` - Envía un saludo.\n";
-      commandsList += "• `.wassaa` - wassaa.\n";
-      commandsList += "• `.kiss` - Dale un beso a alguien.\n";
-      commandsList += "• `.tickle` - Hazle cosquillas a un usuario.\n";
+      commandsList += "• `.ping` - Estado del bot.\n";
       commandsList += "• `.smoke` - 🚬\n";
-      commandsList += "• `.1500` - Milquinientos.\n\n";
+      commandsList += "• `.kiss` / `.tickle` - Interacción social.\n\n";
+
+      commandsList += "*🔧 MULTIMEDIA (Cola de Procesos)*\n";
+      commandsList += "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
+      commandsList += "• `.s [calidad]` - Crea sticker (Imagen/Video/GIF).\n";
+      commandsList += "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
+      commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";
 
       commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
       commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
-      commandsList += "• `.gg` - Registra al ganador y el monto.\n\n";
+      commandsList += "• `.gg` - Registra ganador de subasta.\n\n";
 
-      commandsList += "*🛡️ ADMINISTRACIÓN (Solo Admins)*\n";
-      commandsList += "• `.shh` - Alerta de NO SPAM + Reacción ⚠️.\n";
-      commandsList += "• `.resumen` - Ranking de ganadores de subastas.\n";
-      commandsList += "• `.kick` - Expulsa a un usuario del grupo.\n";
-      commandsList += "• `.promote` - Sube a alguien a Administrador.\n";
-      commandsList += "• `.demote` - Quita el rango de Administrador.\n";
-      commandsList += "• `.close [tiempo]` - Cierra el grupo (ej: .close 5m).\n";
-      commandsList += "• `.open` - Abre el grupo para todos.\n\n";
-
-      commandsList += "*🔧 UTILIDADES*\n";
-      commandsList += "• `.s` - Convierte imagen/video a Sticker.\n";
-      commandsList += "• `.img` - Convierte Sticker a Imagen.\n\n";
-
+      commandsList += "*🛡️ ADMINS (Solo con Rango)*\n";
+      commandsList += "• `.shh` - Alerta de NO SPAM ⚠️.\n";
+      commandsList += "• `.kick` / `.promote` / `.demote`.\n";
+      commandsList += "• `.close` / `.open` - Control del grupo.\n";
+      commandsList += "• `.resumen` - Ranking de subastas.\n";
 
       await sock.sendMessage(
         jid,
-        { text: commandsList + getLegend() },
+        { text: commandsList + getLegend(sock) },
         { quoted: m },
       );
     },
@@ -77,12 +74,11 @@ module.exports = [
     execute: async (sock, m) => {
       const jid = m.key.remoteJid;
 
-      // 1. Mostrar el ID únicamente en la consola (PM2 logs o terminal)
+      // Log en consola para tu monitoreo en la Rasp
       console.log('====================================');
       console.log(`🆔 ID SOLICITADO: ${jid}`);
       console.log('====================================');
 
-      // 2. Reaccionar al mensaje con un beso (emoji)
       await sock.sendMessage(jid, {
         react: {
           text: '💋',
