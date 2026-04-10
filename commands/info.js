@@ -47,6 +47,7 @@ module.exports = [
 
       commandsList += "*🔧 MULTIMEDIA (Cola de Procesos)*\n";
       commandsList += "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
+      commandsList += "_Calidades: superlow, low, medium, high, superhigh_\n";
       commandsList += "• `.s [calidad]` - Crea sticker (Imagen/Video/GIF).\n";
       commandsList += "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
       commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";

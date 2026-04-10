@@ -118,7 +118,7 @@ module.exports = [
 
             // 1. Manda el mensaje con mención
             await sock.sendMessage(jid, { 
-                text: `@${targetNumber} NO SPAM O BAN!!`, 
+                text: `@${targetNumber} Callese alv o ban 🦖`, 
                 mentions: [targetJid] 
             });
 
