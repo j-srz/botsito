@@ -141,19 +141,20 @@ module.exports = [
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
       try {
-        const groupMetadata = await sock.groupMetadata(jid);
-        const botId = sock.user.id.split(':')[0]; // Solo el número del bot
+        cconst groupMetadata = await sock.groupMetadata(jid);
+        const botId = sock.user.id.split(':')[0]; 
+        const creator = groupMetadata.owner; // ID del creador del grupo
 
         let participantes = [];
+        // Filtro base: Que no sea el bot y que no sea el creador del grupo
+        const filtroBase = (p) => !p.id.includes(botId) && p.id !== creator;
+
         if (modo === 'all') {
-          // Filtramos para que no incluya al bot
-          participantes = groupMetadata.participants.filter(p => !p.id.includes(botId));
+            participantes = groupMetadata.participants.filter(filtroBase);
         } else {
-          // Filtramos para que sea admin y no sea el bot
-          participantes = groupMetadata.participants.filter(p => 
-            !p.id.includes(botId) && 
-            (p.admin === 'admin' || p.admin === 'superadmin')
-          );
+            participantes = groupMetadata.participants.filter(p => 
+                filtroBase(p) && (p.admin === 'admin' || p.admin === 'superadmin')
+            );
         }
 
         if (participantes.length === 0) {
