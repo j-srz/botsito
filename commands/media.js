@@ -161,15 +161,51 @@ module.exports = [
         name: '.n',
         execute: async (sock, m, body) => {
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            if (!quoted) return;
-            const customText = body.substring(2).trim();
+            if (!quoted) {
+                return await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } });
+            }
+
+            const jid = m.key.remoteJid;
             const type = Object.keys(quoted)[0];
+            // Lo que escribiste después de .n
+            const customText = body.substring(3).trim(); 
+
             try {
-                const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
-                const typeKey = type.replace('Message', '');
-                await sock.sendMessage(m.key.remoteJid, { [typeKey]: buffer, caption: customText || quoted[type]?.caption || '' }, { quoted: m });
-                await sock.sendMessage(m.key.remoteJid, { react: { text: '✅', key: m.key } });
-            } catch (e) { await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } }); }
+                // --- CASO 1: TEXTO PURO ---
+                if (type === 'conversation' || type === 'extendedTextMessage') {
+                    const originalText = quoted.conversation || quoted.extendedTextMessage?.text;
+                    return await sock.sendMessage(jid, { 
+                        text: (customText || originalText) + getLegend(sock) 
+                    }, { quoted: m });
+                }
+
+                // --- CASO 2: STICKERS ---
+                if (type === 'stickerMessage') {
+                    const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+                    await sock.sendMessage(jid, { sticker: buffer }, { quoted: m });
+                    return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
+                }
+
+                // --- CASO 3: MULTIMEDIA (Imagen / Video) ---
+                if (type === 'imageMessage' || type === 'videoMessage') {
+                    const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+                    const typeKey = type.replace('Message', ''); // 'image' o 'video'
+                    
+                    await sock.sendMessage(jid, { 
+                        [typeKey]: buffer, 
+                        caption: (customText || quoted[type]?.caption || '') + getLegend(sock) 
+                    }, { quoted: m });
+                    
+                    return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
+                }
+
+                // Si es un tipo no soportado (ej. audio o contacto)
+                await sock.sendMessage(jid, { react: { text: '❓', key: m.key } });
+
+            } catch (e) {
+                console.error("Error en .n:", e);
+                await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
+            }
         }
     },
     {
