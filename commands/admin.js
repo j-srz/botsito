@@ -127,9 +127,9 @@ module.exports = [
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
       const args = body.split(" ");
-      const modo = args[1]?.toLowerCase(); // admin o all
+      const modo = args[1]?.toLowerCase();
 
-      // 1. Validación de parámetros: Si no es 'admin' o 'all', tachita y error
+      // 1. Validación de parámetros
       if (modo !== 'admin' && modo !== 'all') {
         await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
         return await sock.sendMessage(jid, { 
@@ -137,27 +137,35 @@ module.exports = [
         }, { quoted: m });
       }
 
-      // 2. Verificación de seguridad (Solo un admin lanza el comando)
+      // 2. Seguridad
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
       try {
         const groupMetadata = await sock.groupMetadata(jid);
-        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-        let participantes = [];
+        const botId = sock.user.id.split(':')[0]; // Solo el número del bot
 
-        // Filtrar candidatos
+        let participantes = [];
         if (modo === 'all') {
-          participantes = groupMetadata.participants.filter(p => p.id !== botId);
+          // Filtramos para que no incluya al bot
+          participantes = groupMetadata.participants.filter(p => !p.id.includes(botId));
         } else {
-          participantes = groupMetadata.participants.filter(p => p.id !== botId && (p.admin === 'admin' || p.admin === 'superadmin'));
+          // Filtramos para que sea admin y no sea el bot
+          participantes = groupMetadata.participants.filter(p => 
+            !p.id.includes(botId) && 
+            (p.admin === 'admin' || p.admin === 'superadmin')
+          );
         }
 
-        if (participantes.length === 0) return;
+        if (participantes.length === 0) {
+           return await sock.sendMessage(jid, { text: "❌ No hay nadie a quien banear (qué milagro)." });
+        }
 
-        // 3. Mandar mensaje de inicio con mención a todos los que participan
+        // 3. Generar menciones visibles y técnicas
         const mentions = participantes.map(p => p.id);
+        const listaMenciones = participantes.map(p => `@${p.id.split('@')[0]}`).join(' ');
+
         const drawMsg = await sock.sendMessage(jid, {
-          text: `🎲 *Iniciando ruleta rusa del ban (${modo})...*\n\n_Sorteando entre los participantes mencionados._` + getLegend(sock),
+          text: `🎲 *Iniciando ruleta rusa del ban (${modo})...*\n\n*Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando en 10 segundos..._` + getLegend(sock),
           mentions: mentions
         }, { quoted: m });
 
@@ -165,7 +173,6 @@ module.exports = [
         const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
         for (const emoji of emojis) {
           await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
-          // Delay de 1 segundo entre cada número para que se note en el cel
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
@@ -176,7 +183,7 @@ module.exports = [
         await sock.groupParticipantsUpdate(jid, [victima], "remove");
 
         await sock.sendMessage(jid, {
-          text: `💥 ¡BOOM! La suerte no estuvo de tu lado @${victimaNum}.\nRecibiste un banazo de ruleta. 👢`,
+          text: `💥 ¡BOOM! @${victimaNum} la suerte te abandonó.\nRecibiste un banazo de ruleta. 👢`,
           mentions: [victima]
         }, { quoted: drawMsg });
 
