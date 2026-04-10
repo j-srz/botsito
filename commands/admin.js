@@ -124,10 +124,17 @@ module.exports = [
 {
     name: ".ruletaban",
     execute: async (sock, m, body) => {
+      // --- LOGS AL PRINCIPIO PARA DEBUG ---
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
+      
+      console.log("==== INICIO RULETABAN ====");
+      console.log("Chat JID:", jid);
+      console.log("Sender (Tú):", sender);
+
       const args = body.split(" ");
       const modo = args[1]?.toLowerCase();
+      console.log("Modo elegido:", modo);
 
       if (modo !== 'admin' && modo !== 'all') {
         await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
@@ -136,26 +143,33 @@ module.exports = [
         }, { quoted: m });
       }
 
-      if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
+      // Validamos si es grupo
+      if (!jid.endsWith("@g.us")) {
+          console.log("Abortado: No es un grupo");
+          return;
+      }
+
+      // IMPORTANTE: Checa si isAdmin te está rechazando aquí
+      const esAdmin = await isAdmin(sock, jid, sender);
+      console.log("¿Es el sender Admin?:", esAdmin);
+
+      if (!esAdmin) {
+          console.log("Abortado: El bot cree que NO eres admin");
+          return;
+      }
 
       try {
         const groupMetadata = await sock.groupMetadata(jid);
-        
-        // --- SECCIÓN DE DEBUG ---
-        console.log("==== DEBUG RULETABAN ====");
-        console.log("Bot Full ID (sock.user.id):", sock.user.id);
         const botIdClean = sock.user.id.split(':')[0];
-        console.log("Bot Clean Number:", botIdClean);
-        console.log("Group Owner (Creator):", groupMetadata.owner);
-        console.log("Sender ID:", sender);
-        
-        const allIDs = groupMetadata.participants.map(p => p.id);
-        console.log("All Participants in Group:", allIDs);
-        // -------------------------
-
         const creator = groupMetadata.owner || "";
+
+        console.log("Bot Clean Number:", botIdClean);
+        console.log("Creador del Grupo:", creator);
+
         const filtroInmunidad = (p) => {
-            const isBot = p.id.includes(botIdClean);
+            // Comparamos solo los números para evitar broncas con @lid o @s.whatsapp.net
+            const pNum = p.id.split('@')[0];
+            const isBot = pNum.includes(botIdClean);
             const isCreator = p.id === creator;
             return !isBot && !isCreator;
         };
@@ -169,8 +183,7 @@ module.exports = [
           );
         }
 
-        console.log("Final Candidates for Ban:", participantes.map(p => p.id));
-        console.log("=========================");
+        console.log("Candidatos finales:", participantes.map(p => p.id));
 
         if (participantes.length === 0) {
           return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas." });
@@ -191,15 +204,19 @@ module.exports = [
         }
 
         const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
-        //await sock.groupParticipantsUpdate(jid, [victima], "remove");
+        
+        // --- COMENTADO PARA NO ELIMINAR ---
+        // await sock.groupParticipantsUpdate(jid, [victima], "remove");
 
         await sock.sendMessage(jid, {
-          text: `💥 ¡BOOM! @${victima.split('@')[0]} te fuiste alv.`,
+          text: `💥 ¡BOOM! @${victima.split('@')[0]} salió sorteado.\n(No te eliminé porque estamos en pruebas).`,
           mentions: [victima]
         }, { quoted: drawMsg });
 
+        console.log("==== FIN RULETABAN (ÉXITO) ====");
+
       } catch (e) {
-        console.error("❌ ERROR EN RULETABAN:", e);
+        console.error("❌ ERROR DENTRO DEL TRY:", e);
       }
     },
   },
