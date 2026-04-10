@@ -127,7 +127,6 @@ module.exports = [
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
       
-      console.log("==== INICIO RULETABAN ====");
       const args = body.split(" ");
       const modo = args[1]?.toLowerCase();
 
@@ -143,18 +142,19 @@ module.exports = [
       try {
         const groupMetadata = await sock.groupMetadata(jid);
         
-        // --- IDENTIDADES DEL BOT PARA INMUNIDAD ---
-        const botPn = sock.user.id.split('@')[0].split(':')[0];
-        const botLid = sock.user.lid ? sock.user.lid.split('@')[0] : null;
-        const creator = groupMetadata.owner || "";
+        // Función para limpiar cualquier ID (quita :4, @lid, @s.whatsapp.net)
+        const cleanID = (id) => id ? id.split('@')[0].split(':')[0] : "";
 
-        console.log("Debug IDs - Bot PN:", botPn, "Bot LID:", botLid, "Creator:", creator);
+        const botPnBase = cleanID(sock.user.id);
+        const botLidBase = cleanID(sock.user.lid || "");
+        const creator = groupMetadata.owner || ""; 
+        const creatorBase = cleanID(creator);
 
-        // FILTRO: El bot se saca a sí mismo al 100%
+        // FILTRO: Solo el bot es invisible para la ruleta
         const filtroParticipantes = (p) => {
-            const pId = p.id.split('@')[0];
-            const esElBot = pId.includes(botPn) || (botLid && pId.includes(botLid));
-            return !esElBot;
+            const pIdBase = cleanID(p.id);
+            const esElBot = (pIdBase === botPnBase) || (botLidBase && pIdBase === botLidBase);
+            return !esElBot; 
         };
 
         let participantes = [];
@@ -168,45 +168,39 @@ module.exports = [
 
         if (participantes.length === 0) return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas." });
 
-        // Menciones técnicas y visuales
         const mentions = participantes.map(p => p.id);
         const listaMenciones = participantes.map(p => `@${p.id.split('@')[0]}`).join(' ');
 
         const drawMsg = await sock.sendMessage(jid, {
-          text: `🎲 *Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando en 10 segundos..._` + getLegend(sock),
+          text: `🎲 *Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando..._` + getLegend(sock),
           mentions: mentions
         }, { quoted: m });
 
-        // Cuenta regresiva con reacciones
+        // --- BUCLE DE REACCIONES (9 AL 0) ---
         const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
         for (const emoji of emojis) {
           await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // SELECCIÓN FINAL
+        // --- SELECCIÓN ---
         const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
-        const victimaNum = victima.split('@')[0];
+        const victimaBase = cleanID(victima);
         
-        console.log("Víctima elegida:", victima);
-
-        // Lógica de Ban vs Inmunidad de Creador
-        if (victima === creator) {
+        if (victimaBase === creatorBase) {
             await sock.sendMessage(jid, {
-                text: `💥 ¡BOOM! La bala le dio a @${victimaNum}... pero es el *Creador del Grupo*. El Rex no banea a su Dios. 👑✨`,
+                text: `💥 ¡BOOM! La bala le dio a @${victimaBase}... pero es el *Creador del Grupo*. Mi código no me permite tocar a mi padre. 👑✨`,
                 mentions: [victima]
             }, { quoted: drawMsg });
         } else {
-            // Descomenta la línea de abajo cuando termines las pruebas
-            // await sock.groupParticipantsUpdate(jid, [victima], "remove");
+            // Descomenta la línea de abajo para que el ban sea REAL
+            // await sock.groupParticipantsUpdate(jid, [victima], "remove"); 
 
             await sock.sendMessage(jid, {
-                text: `💥 ¡BOOM! @${victimaNum} la suerte te abandonó.\n(No te eliminé por estar en modo prueba, pero ya estarías fuera). 👢`,
+                text: `💥 ¡BOOM! @${victimaBase} la suerte te abandonó.\n(Modo prueba: No fuiste eliminado). 👢`,
                 mentions: [victima]
             }, { quoted: drawMsg });
         }
-
-        console.log("==== FIN RULETABAN (ÉXITO) ====");
 
       } catch (e) {
         console.error("❌ ERROR EN RULETABAN:", e);
