@@ -4,14 +4,20 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { getLegend } = require('../utils/functions');
 
 // --- CONTROL DE PROCESOS ---
 let processingQueue = [];
 let isProcessing = false;
-let currentChildProcess = null; // Para guardar el FFmpeg actual
+let currentChildProcess = null;
 
+// Configuración de Calidad (Resolución y Compresión CRF)
 const qualityMap = {
-    'superlow': 10, 'low': 25, 'medium': 45, 'high': 70, 'superhigh': 95
+    'superlow': { crf: 50, scale: 128 },
+    'low':      { crf: 40, scale: 160 },
+    'medium':   { crf: 32, scale: 256 },
+    'high':     { crf: 24, scale: 384 },
+    'superhigh':{ crf: 18, scale: 512 }
 };
 
 const generarBarraFila = (posicion) => {
@@ -28,17 +34,15 @@ const generarBarraFila = (posicion) => {
 // --- GESTIÓN DE LA COLA ---
 const processNext = async () => {
     if (processingQueue.length === 0 || isProcessing) return;
-
     isProcessing = true;
-    const { task, sock, m, body, mediaData, quality } = processingQueue[0];
+    const { task, sock, m, body, mediaData, qConfig } = processingQueue[0];
 
     try {
-        await task(sock, m, body, mediaData, quality);
-        // REACCIÓN DE ÉXITO ✅
+        await task(sock, m, body, mediaData, qConfig);
         await sock.sendMessage(m.key.remoteJid, { react: { text: '✅', key: m.key } });
     } catch (err) {
         console.error('❌ Error:', err.message);
-        // REACCIÓN DE ERROR ❌
+        await sock.sendMessage(m.key.remoteJid, { text: `❌ ERROR: ${err.message}` });
         await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } });
     } finally {
         processingQueue.shift();
@@ -48,15 +52,21 @@ const processNext = async () => {
     }
 };
 
-const addToQueue = async (sock, m, body, mediaData, task, quality = 40) => {
+const addToQueue = async (sock, m, body, mediaData, task, qConfig) => {
     const jid = m.key.remoteJid;
-    processingQueue.push({ task, sock, m, body, mediaData, quality });
+    processingQueue.push({ task, sock, m, body, mediaData, qConfig });
 
     if (isProcessing || processingQueue.length > 1) {
         const pos = processingQueue.length;
         const barraVisual = generarBarraFila(pos);
-        const fecha = new Date().toLocaleDateString('es-MX');
-        const mensajeEspera = `┌── [ 🦖 REX COLA ] ──┐\n🚨 *¡PERESE!* 🚨\n${barraVisual}\nPosición: ${pos} | Total: ${pos}\n└─────────────────────┘\n_Rex Bot | ${fecha}_`;
+        const mensajeEspera = 
+`┌── [ 🦖 REX COLA ] ──┐
+🚨 *¡PERESE!* 🚨
+${barraVisual}
+Posición: ${pos} | Total: ${pos}
+└─────────────────────┘
+${getLegend(sock)}`;
+
         await sock.sendMessage(jid, { text: mensajeEspera }, { quoted: m });
     }
     processNext();
@@ -64,26 +74,31 @@ const addToQueue = async (sock, m, body, mediaData, task, quality = 40) => {
 
 // --- TAREAS ---
 
-const stickerTask = async (sock, m, body, mediaData, quality) => {
+const stickerTask = async (sock, m, body, mediaData, qConfig) => {
     const jid = m.key.remoteJid;
     const type = Object.keys(mediaData)[0];
-    let buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+    const duration = mediaData[type]?.seconds || 0;
+
+    if (type === 'videoMessage' && duration > 10) {
+        throw new Error('El video es muy largo (+10s). Córtalo e intenta de nuevo.');
+    }
+
+    const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
     if (type === 'videoMessage') {
         const tempIn = path.resolve(__dirname, `../media/s_in_${Date.now()}.mp4`);
         const tempOut = path.resolve(__dirname, `../media/s_out_${Date.now()}.webp`);
         fs.writeFileSync(tempIn, buffer);
 
-        const cmd = `ffmpeg -y -i "${tempIn}" -vcodec libwebp -filter:v "fps=15,scale=256:256:force_original_aspect_ratio=decrease,pad=256:256:(ow-iw)/2:(oh-ih)/2:color=black@0" -lossless 0 -compression_level 4 -q:v ${quality} -loop 0 -an -vsync 0 "${tempOut}"`;
+        // FFmpeg optimizado para Raspberry Pi
+        const cmd = `ffmpeg -y -t 10 -i "${tempIn}" -vcodec libwebp -filter:v "fps=15,scale=${qConfig.scale}:${qConfig.scale}:force_original_aspect_ratio=decrease,pad=${qConfig.scale}:${qConfig.scale}:(ow-iw)/2:(oh-ih)/2:color=black@0" -lossless 0 -compression_level 4 -q:v ${qConfig.crf} -loop 0 -an "${tempOut}"`;
         
         return new Promise((resolve, reject) => {
             currentChildProcess = exec(cmd, async (err) => {
                 if (!err) {
                     await sock.sendMessage(jid, { sticker: fs.readFileSync(tempOut) }, { quoted: m });
                     resolve();
-                } else {
-                    reject(err);
-                }
+                } else reject(err);
                 if (fs.existsSync(tempIn)) fs.unlinkSync(tempIn);
                 if (fs.existsSync(tempOut)) fs.unlinkSync(tempOut);
             });
@@ -91,12 +106,12 @@ const stickerTask = async (sock, m, body, mediaData, quality) => {
     }
 
     const sticker = new Sticker(buffer, {
-        pack: 'Rex Bot Pack 🦖', author: 'Jesús Suarez', type: StickerTypes.FULL, quality: quality
+        pack: 'Rex Bot Pack 🦖', author: 'BOTSITO', type: StickerTypes.FULL, quality: qConfig.crf
     });
     await sock.sendMessage(jid, { sticker: await sticker.toBuffer() }, { quoted: m });
 };
 
-const imageTask = async (sock, m, body, mediaData) => {
+const imageTask = async (sock, m, body, mediaData, qConfig) => {
     const jid = m.key.remoteJid;
     const isAnimated = mediaData.stickerMessage?.isAnimated;
     const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
@@ -104,25 +119,24 @@ const imageTask = async (sock, m, body, mediaData) => {
     if (isAnimated) {
         const tempGif = path.resolve(__dirname, `../media/temp_${Date.now()}.gif`);
         const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
-        await sharp(buffer, { animated: true }).resize(256, 256, { fit: 'contain' }).gif().toFile(tempGif);
         
-        const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -threads 2 -movflags faststart -pix_fmt yuv420p -vf "fps=12,scale=256:-2" -c:v libx264 -preset ultrafast -crf 35 "${tempMp4}"`;
+        await sharp(buffer, { animated: true }).resize(qConfig.scale, qConfig.scale, { fit: 'contain' }).gif().toFile(tempGif);
+        
+        const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -threads 2 -movflags faststart -pix_fmt yuv420p -vf "fps=12,scale=${qConfig.scale}:-2" -c:v libx264 -preset ultrafast -crf ${qConfig.crf} "${tempMp4}"`;
         
         return new Promise((resolve, reject) => {
             currentChildProcess = exec(ffmpegCmd, { timeout: 45000 }, async (error) => {
                 if (!error) {
-                    await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Sticker animado convertido 🦖' }, { quoted: m });
+                    await sock.sendMessage(jid, { video: fs.readFileSync(tempMp4), gifPlayback: true, caption: '> Convertido 🦖' }, { quoted: m });
                     resolve();
-                } else {
-                    reject(error);
-                }
+                } else reject(error);
                 if (fs.existsSync(tempGif)) fs.unlinkSync(tempGif);
                 if (fs.existsSync(tempMp4)) fs.unlinkSync(tempMp4);
             });
         });
     } else {
         const imgBuffer = await sharp(buffer).jpeg().toBuffer();
-        await sock.sendMessage(jid, { image: imgBuffer, caption: '> Sticker convertido a imagen 🦖' }, { quoted: m });
+        await sock.sendMessage(jid, { image: imgBuffer, caption: '> Sticker a imagen 🦖' }, { quoted: m });
     }
 };
 
@@ -131,20 +145,11 @@ module.exports = [
     {
         name: '.cancel',
         execute: async (sock, m) => {
-            const jid = m.key.remoteJid;
-            
-            // 1. Limpiar la cola
             processingQueue = [];
-            
-            // 2. Matar proceso actual si existe
-            if (currentChildProcess) {
-                currentChildProcess.kill('SIGKILL');
-                currentChildProcess = null;
-            }
-            
+            if (currentChildProcess) { currentChildProcess.kill('SIGKILL'); currentChildProcess = null; }
             isProcessing = false;
-            await sock.sendMessage(jid, { text: '🚮 *PROCESOS CANCELADOS*\nSe ha vaciado la cola y detenido el motor de renderizado. 🦖' });
-            await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
+            await sock.sendMessage(m.key.remoteJid, { text: '🚮 *COLA VACIA* - Se detuvieron los procesos.' });
+            await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } });
         }
     },
     {
@@ -168,17 +173,23 @@ module.exports = [
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage || m.message;
             const type = Object.keys(quoted)[0];
             if (type !== 'imageMessage' && type !== 'videoMessage') return;
+            
             const args = body.split(' ');
-            const quality = qualityMap[args[1]?.toLowerCase()] || 40;
-            await addToQueue(sock, m, body, { [type]: quoted[type] }, stickerTask, quality);
+            const qConfig = qualityMap[args[1]?.toLowerCase()] || qualityMap['superlow'];
+            
+            await addToQueue(sock, m, body, { [type]: quoted[type] }, stickerTask, qConfig);
         }
     },
     {
         name: '.img',
-        execute: async (sock, m) => {
+        execute: async (sock, m, body) => {
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quoted?.stickerMessage) return;
-            await addToQueue(sock, m, null, { stickerMessage: quoted.stickerMessage }, imageTask);
+
+            const args = body.split(' ');
+            const qConfig = qualityMap[args[1]?.toLowerCase()] || qualityMap['superlow'];
+
+            await addToQueue(sock, m, body, { stickerMessage: quoted.stickerMessage }, imageTask, qConfig);
         }
     }
 ];

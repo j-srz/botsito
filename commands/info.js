@@ -63,7 +63,6 @@ module.exports = [
       commandsList += "• `.s` - Convierte imagen/video a Sticker.\n";
       commandsList += "• `.img` - Convierte Sticker a Imagen.\n\n";
 
-      commandsList += `*ID del Chat:* \`${jid}\``;
 
       await sock.sendMessage(
         jid,
