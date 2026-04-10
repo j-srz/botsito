@@ -1,4 +1,4 @@
-const { getLegend } = require("../utils/helpers"); // Asegúrate de que la ruta apunte a tus utilidades
+const { getLegend } = require("../utils/helpers"); 
 
 module.exports = [
   {

@@ -4,14 +4,13 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const { getLegend } = require('../utils/helpers'); // Corregido el path a helpers
+const { getLegend } = require('../utils/helpers'); 
 
 // --- CONTROL DE PROCESOS ---
 let processingQueue = [];
 let isProcessing = false;
 let currentChildProcess = null;
 
-// Configuración de Calidad (Resolución y Compresión CRF)
 const qualityMap = {
     'superlow': { crf: 50, scale: 128 },
     'low':      { crf: 40, scale: 160 },
@@ -39,6 +38,7 @@ const processNext = async () => {
 
     try {
         await task(sock, m, body, mediaData, qConfig);
+        // REACCIÓN DE ÉXITO ✅ (Se envía al terminar)
         await sock.sendMessage(m.key.remoteJid, { react: { text: '✅', key: m.key } });
     } catch (err) {
         console.error('❌ Error:', err.message);
@@ -48,7 +48,7 @@ const processNext = async () => {
         processingQueue.shift();
         isProcessing = false;
         currentChildProcess = null;
-        setTimeout(processNext, 1000); // 1s de descanso para el CPU
+        setTimeout(processNext, 1000);
     }
 };
 
@@ -76,10 +76,12 @@ ${getLegend(sock)}`;
 
 const stickerTask = async (sock, m, body, mediaData, qConfig) => {
     const jid = m.key.remoteJid;
+    // REACCIÓN INICIAL: Avisamos que empezamos a trabajar
+    await sock.sendMessage(jid, { react: { text: '⏳', key: m.key } });
+
     const type = Object.keys(mediaData)[0];
     const duration = mediaData[type]?.seconds || 0;
 
-    // Validación de duración para videos/GIFs
     if (type === 'videoMessage' && duration > 10) {
         throw new Error('El video es muy largo (+10s).');
     }
@@ -91,7 +93,6 @@ const stickerTask = async (sock, m, body, mediaData, qConfig) => {
         const tempOut = path.resolve(__dirname, `../media/s_out_${Date.now()}.webp`);
         fs.writeFileSync(tempIn, buffer);
 
-        // FFmpeg simplificado para evitar errores de decoder 'libwebp'
         const cmd = `ffmpeg -y -t 10 -i "${tempIn}" -vf "fps=15,scale=${qConfig.scale}:${qConfig.scale}:force_original_aspect_ratio=decrease,pad=${qConfig.scale}:${qConfig.scale}:(ow-iw)/2:(oh-ih)/2:color=black@0" -loop 0 -an "${tempOut}"`;
         
         return new Promise((resolve, reject) => {
@@ -114,6 +115,9 @@ const stickerTask = async (sock, m, body, mediaData, qConfig) => {
 
 const imageTask = async (sock, m, body, mediaData, qConfig) => {
     const jid = m.key.remoteJid;
+    // REACCIÓN INICIAL: Avisamos que empezamos a trabajar
+    await sock.sendMessage(jid, { react: { text: '⏳', key: m.key } });
+
     const isAnimated = mediaData.stickerMessage?.isAnimated;
     const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
@@ -121,7 +125,6 @@ const imageTask = async (sock, m, body, mediaData, qConfig) => {
         const tempGif = path.resolve(__dirname, `../media/temp_${Date.now()}.gif`);
         const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
         
-        // Extraemos frames con Sharp y pasamos a MP4 con FFmpeg
         await sharp(buffer, { animated: true }).resize(qConfig.scale, qConfig.scale, { fit: 'contain' }).gif().toFile(tempGif);
         
         const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -threads 2 -movflags faststart -pix_fmt yuv420p -vf "fps=12,scale=${qConfig.scale}:-2" -c:v libx264 -preset ultrafast -crf ${qConfig.crf} "${tempMp4}"`;
@@ -142,7 +145,7 @@ const imageTask = async (sock, m, body, mediaData, qConfig) => {
     }
 };
 
-// --- EXPORTACIÓN ---
+// --- EL RESTO DE LAS TAREAS (.cancel, .n, .s, .img) QUEDAN IGUAL ---
 module.exports = [
     {
         name: '.cancel',
@@ -175,10 +178,8 @@ module.exports = [
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage || m.message;
             const type = Object.keys(quoted)[0];
             if (type !== 'imageMessage' && type !== 'videoMessage') return;
-            
             const args = body.split(' ');
             const qConfig = qualityMap[args[1]?.toLowerCase()] || qualityMap['superlow'];
-            
             await addToQueue(sock, m, body, { [type]: quoted[type] }, stickerTask, qConfig);
         }
     },
@@ -187,10 +188,8 @@ module.exports = [
         execute: async (sock, m, body) => {
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!quoted?.stickerMessage) return;
-
             const args = body.split(' ');
             const qConfig = qualityMap[args[1]?.toLowerCase()] || qualityMap['superlow'];
-
             await addToQueue(sock, m, body, { stickerMessage: quoted.stickerMessage }, imageTask, qConfig);
         }
     }
