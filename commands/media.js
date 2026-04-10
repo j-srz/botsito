@@ -4,7 +4,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const { getLegend } = require('../utils/functions');
+const { getLegend } = require('../utils/helpers'); // Corregido el path a helpers
 
 // --- CONTROL DE PROCESOS ---
 let processingQueue = [];
@@ -48,7 +48,7 @@ const processNext = async () => {
         processingQueue.shift();
         isProcessing = false;
         currentChildProcess = null;
-        setTimeout(processNext, 1000);
+        setTimeout(processNext, 1000); // 1s de descanso para el CPU
     }
 };
 
@@ -79,8 +79,9 @@ const stickerTask = async (sock, m, body, mediaData, qConfig) => {
     const type = Object.keys(mediaData)[0];
     const duration = mediaData[type]?.seconds || 0;
 
+    // Validación de duración para videos/GIFs
     if (type === 'videoMessage' && duration > 10) {
-        throw new Error('El video es muy largo (+10s). Córtalo e intenta de nuevo.');
+        throw new Error('El video es muy largo (+10s).');
     }
 
     const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
@@ -90,8 +91,8 @@ const stickerTask = async (sock, m, body, mediaData, qConfig) => {
         const tempOut = path.resolve(__dirname, `../media/s_out_${Date.now()}.webp`);
         fs.writeFileSync(tempIn, buffer);
 
-        // FFmpeg optimizado para Raspberry Pi
-        const cmd = `ffmpeg -y -t 10 -i "${tempIn}" -vcodec libwebp -filter:v "fps=15,scale=${qConfig.scale}:${qConfig.scale}:force_original_aspect_ratio=decrease,pad=${qConfig.scale}:${qConfig.scale}:(ow-iw)/2:(oh-ih)/2:color=black@0" -lossless 0 -compression_level 4 -q:v ${qConfig.crf} -loop 0 -an "${tempOut}"`;
+        // FFmpeg simplificado para evitar errores de decoder 'libwebp'
+        const cmd = `ffmpeg -y -t 10 -i "${tempIn}" -vf "fps=15,scale=${qConfig.scale}:${qConfig.scale}:force_original_aspect_ratio=decrease,pad=${qConfig.scale}:${qConfig.scale}:(ow-iw)/2:(oh-ih)/2:color=black@0" -loop 0 -an "${tempOut}"`;
         
         return new Promise((resolve, reject) => {
             currentChildProcess = exec(cmd, async (err) => {
@@ -106,7 +107,7 @@ const stickerTask = async (sock, m, body, mediaData, qConfig) => {
     }
 
     const sticker = new Sticker(buffer, {
-        pack: 'Rex Bot Pack 🦖', author: 'BOTSITO', type: StickerTypes.FULL, quality: qConfig.crf
+        pack: 'Rex Bot Pack 🦖', author: sock.user.name || 'Rex Bot', type: StickerTypes.FULL, quality: qConfig.crf
     });
     await sock.sendMessage(jid, { sticker: await sticker.toBuffer() }, { quoted: m });
 };
@@ -120,6 +121,7 @@ const imageTask = async (sock, m, body, mediaData, qConfig) => {
         const tempGif = path.resolve(__dirname, `../media/temp_${Date.now()}.gif`);
         const tempMp4 = path.resolve(__dirname, `../media/temp_${Date.now()}.mp4`);
         
+        // Extraemos frames con Sharp y pasamos a MP4 con FFmpeg
         await sharp(buffer, { animated: true }).resize(qConfig.scale, qConfig.scale, { fit: 'contain' }).gif().toFile(tempGif);
         
         const ffmpegCmd = `ffmpeg -y -i "${tempGif}" -threads 2 -movflags faststart -pix_fmt yuv420p -vf "fps=12,scale=${qConfig.scale}:-2" -c:v libx264 -preset ultrafast -crf ${qConfig.crf} "${tempMp4}"`;
@@ -161,8 +163,8 @@ module.exports = [
             const type = Object.keys(quoted)[0];
             try {
                 const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
-                const caption = customText || quoted[type]?.caption || '';
-                await sock.sendMessage(m.key.remoteJid, { [type.replace('Message', '')]: buffer, caption }, { quoted: m });
+                const typeKey = type.replace('Message', '');
+                await sock.sendMessage(m.key.remoteJid, { [typeKey]: buffer, caption: customText || quoted[type]?.caption || '' }, { quoted: m });
                 await sock.sendMessage(m.key.remoteJid, { react: { text: '✅', key: m.key } });
             } catch (e) { await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } }); }
         }
