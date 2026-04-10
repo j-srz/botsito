@@ -121,7 +121,7 @@ module.exports = [
       await sock.sendMessage(jid, { react: { text: "⚠️", key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } });
     },
   },
- {
+{
     name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
@@ -132,22 +132,35 @@ module.exports = [
       if (modo !== 'admin' && modo !== 'all') {
         await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
         return await sock.sendMessage(jid, { 
-          text: "⚠️ *Si los pendejos brillaran tú serías el sol.*\n\nUsa:\n• `.ruletaban all` - Sortear entre todos.\n• `.ruletaban admin` - Sortear entre admins." 
+          text: "⚠️ *Si los pendejos brillaran tú serías el sol.*\n\nUsa: `.ruletaban all` o `.ruletaban admin`" 
         }, { quoted: m });
       }
 
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
       try {
-        // CORREGIDO: 'const' en lugar de 'cconst'
         const groupMetadata = await sock.groupMetadata(jid);
-        const botId = sock.user.id.split(':')[0]; // Número limpio del bot
-        const creator = groupMetadata.owner || ""; // ID del creador del grupo
+        
+        // --- SECCIÓN DE DEBUG ---
+        console.log("==== DEBUG RULETABAN ====");
+        console.log("Bot Full ID (sock.user.id):", sock.user.id);
+        const botIdClean = sock.user.id.split(':')[0];
+        console.log("Bot Clean Number:", botIdClean);
+        console.log("Group Owner (Creator):", groupMetadata.owner);
+        console.log("Sender ID:", sender);
+        
+        const allIDs = groupMetadata.participants.map(p => p.id);
+        console.log("All Participants in Group:", allIDs);
+        // -------------------------
+
+        const creator = groupMetadata.owner || "";
+        const filtroInmunidad = (p) => {
+            const isBot = p.id.includes(botIdClean);
+            const isCreator = p.id === creator;
+            return !isBot && !isCreator;
+        };
 
         let participantes = [];
-        // Filtro: Que no sea el bot Y que no sea el creador
-        const filtroInmunidad = (p) => !p.id.includes(botId) && p.id !== creator;
-
         if (modo === 'all') {
           participantes = groupMetadata.participants.filter(filtroInmunidad);
         } else {
@@ -156,40 +169,37 @@ module.exports = [
           );
         }
 
+        console.log("Final Candidates for Ban:", participantes.map(p => p.id));
+        console.log("=========================");
+
         if (participantes.length === 0) {
-          return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas en este sorteo." });
+          return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas." });
         }
 
-        // 3. Generar menciones visibles y técnicas
         const mentions = participantes.map(p => p.id);
         const listaMenciones = participantes.map(p => `@${p.id.split('@')[0]}`).join(' ');
 
         const drawMsg = await sock.sendMessage(jid, {
-          text: `🎲 *Iniciando ruleta rusa del ban (${modo})...*\n\n*Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando en 10 segundos..._` + getLegend(sock),
+          text: `🎲 *Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando..._`,
           mentions: mentions
         }, { quoted: m });
 
-        // 4. Cuenta regresiva con reacciones
         const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
         for (const emoji of emojis) {
           await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // 5. Selección y Banazo
         const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
-        const victimaNum = victima.split('@')[0];
-
-        await sock.groupParticipantsUpdate(jid, [victima], "remove");
+        //await sock.groupParticipantsUpdate(jid, [victima], "remove");
 
         await sock.sendMessage(jid, {
-          text: `💥 ¡BOOM! @${victimaNum} la suerte te abandonó.\nRecibiste un banazo de ruleta. 👢`,
+          text: `💥 ¡BOOM! @${victima.split('@')[0]} te fuiste alv.`,
           mentions: [victima]
         }, { quoted: drawMsg });
 
       } catch (e) {
-        console.error("Error en ruletaban:", e);
-        await sock.sendMessage(jid, { text: "❌ Error técnico al girar la ruleta." });
+        console.error("❌ ERROR EN RULETABAN:", e);
       }
     },
   },
