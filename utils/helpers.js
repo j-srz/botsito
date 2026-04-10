@@ -1,25 +1,27 @@
 const isAdmin = async (sock, jid, user) => {
     try {
         if (!jid.endsWith('@g.us')) return false;
-
-        // "Limpiamos" el ID del usuario (quitamos el :1, :2, etc. de Baileys)
-        const cleanUser = user.split(':')[0] + (user.includes('@') ? '@' + user.split('@')[1] : '');
-
         const groupMetadata = await sock.groupMetadata(jid);
         const participants = groupMetadata.participants;
-
-        // Buscamos al usuario limpio en la lista
-        const participant = participants.find(p => p.id === cleanUser);
-
+        const participant = participants.find(p => p.id === user);
         return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
     } catch (e) {
+        console.error('Error en isAdmin:', e);
         return false;
     }
 };
 
-const getLegend = () => {
-    const date = new Date().toLocaleDateString('es-MX');
-    return `\n\n> Rex bot | ${date}`;
+const getLegend = (sock) => {
+    // Extraemos el nombre configurado en el WhatsApp del bot
+    const botName = sock?.user?.name || 'Rex Bot';
+
+    // Formato de fecha natural sin año: "9 de abril"
+    const fechaNatural = new Date().toLocaleDateString('es-MX', {
+        day: 'numeric',
+        month: 'long'
+    });
+
+    return `\n\n> ${botName} | ${fechaNatural}`;
 };
 
 module.exports = { isAdmin, getLegend };
