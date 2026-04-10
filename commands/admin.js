@@ -136,4 +136,74 @@ module.exports = [
             });
         }
     },
+    {
+    name: ".pin",
+    execute: async (sock, m, body) => {
+      const jid = m.key.remoteJid;
+      const sender = m.key.participant || m.key.remoteJid;
+
+      // 1. Validaciones: Que sea grupo y que seas admin
+      if (!jid.endsWith("@g.us")) return;
+      if (!(await isAdmin(sock, jid, sender))) return;
+
+      // 2. Obtener el mensaje al que se está respondiendo
+      const quoted = m.message?.extendedTextMessage?.contextInfo;
+      if (!quoted || !quoted.stanzaId) {
+        return await sock.sendMessage(jid, { text: "❌ Responde al mensaje que quieres fijar." });
+      }
+
+      // 3. Determinar tiempo (opcional): 24h (defecto), 7d, 30d
+      const args = body.split(" ");
+      let duration = 86400; // 24 horas en segundos por defecto
+      
+      if (args[1] === "7d") duration = 604800;
+      if (args[1] === "30d") duration = 2592000;
+
+      try {
+        // Enviar la señal de fijado
+        await sock.sendMessage(jid, {
+          pin: {
+            key: {
+              remoteJid: jid,
+              fromMe: quoted.participant === sock.user.id.split(':')[0] + '@s.whatsapp.net',
+              id: quoted.stanzaId,
+              participant: quoted.participant
+            },
+            type: 1, // 1 para fijar, 2 para desfijar
+            time: duration
+          }
+        });
+
+        await sock.sendMessage(jid, { react: { text: '📌', key: m.key } });
+      } catch (err) {
+        console.error(err);
+        await sock.sendMessage(jid, { text: "❌ No pude fijar el mensaje. ¿Soy admin?" });
+      }
+    },
+  },
+
+  {
+    name: ".unpin",
+    execute: async (sock, m) => {
+      const jid = m.key.remoteJid;
+      const sender = m.key.participant || m.key.remoteJid;
+      if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
+
+      const quoted = m.message?.extendedTextMessage?.contextInfo;
+      if (!quoted) return await sock.sendMessage(jid, { text: "❌ Responde al mensaje que quieres desfijar." });
+
+      await sock.sendMessage(jid, {
+        pin: {
+          key: {
+            remoteJid: jid,
+            fromMe: quoted.participant === sock.user.id.split(':')[0] + '@s.whatsapp.net',
+            id: quoted.stanzaId,
+            participant: quoted.participant
+          },
+          type: 2, // 2 para desfijar
+        }
+      });
+      await sock.sendMessage(jid, { react: { text: '🔓', key: m.key } });
+    }
+  }
 ];

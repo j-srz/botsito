@@ -14,29 +14,26 @@ module.exports = [
     execute: async (sock, m) => {
       const jid = m.key.remoteJid;
       const videoPath = path.resolve(__dirname, "../media/milquinientos.mp4");
+      const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+      
+      if (!quotedInfo || !quotedInfo.participant)
+        return sock.sendMessage(jid, { text: "Responde a un mensaje." }, { quoted: m });
 
-      // 1. Verificamos que el video exista en la carpeta media
+      const senderName = m.pushName || "Alguien";
+
       if (!fs.existsSync(videoPath)) {
         return await sock.sendMessage(jid, {
           text: "❌ No encontré milquinientos.mp4 en la carpeta media.",
         });
       }
 
-      // 2. Mandamos el video como GIF (gifPlayback: true)
-      await sock.sendMessage(
-        jid,
-        {
+      await sock.sendMessage(jid, {
           video: fs.readFileSync(videoPath),
           gifPlayback: true,
-          caption: "*milquinientos*" + getLegend(sock), // Tu leyenda con fecha natural
-        },
-        { quoted: m },
-      );
+          caption: `\`${senderName}\` _dice:_ *Milquinientos*` + getLegend(sock),
+        }, { quoted: m });
 
-      // 3. Reaccionamos al mensaje del usuario con un besito
-      await sock.sendMessage(jid, {
-        react: { text: "💋", key: m.key },
-      });
+      await sock.sendMessage(jid, { react: { text: "💋", key: m.key } });
     },
   },
   {
@@ -45,24 +42,16 @@ module.exports = [
       const jid = m.key.remoteJid;
       const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
       if (!quotedInfo || !quotedInfo.participant)
-        return sock.sendMessage(
-          jid,
-          { text: "Responde a un mensaje." },
-          { quoted: m },
-        );
+        return sock.sendMessage(jid, { text: "Responde a un mensaje." }, { quoted: m });
 
       const targetJid = quotedInfo.participant;
       const targetNumber = targetJid.split("@")[0].split(":")[0];
       const senderName = m.pushName || "Alguien";
 
-      await sock.sendMessage(
-        jid,
-        {
+      await sock.sendMessage(jid, {
           text: `\`${senderName}\` _dice:_ @${targetNumber} vtalv ⊂(◉‿◉)つ`,
           mentions: [targetJid],
-        },
-        { quoted: m },
-      );
+        }, { quoted: m });
     },
   },
   {
@@ -74,20 +63,15 @@ module.exports = [
 
       const targetJid = quotedInfo.participant;
       const targetNumber = targetJid.split("@")[0].split(":")[0];
-      const videoUrl =
-        "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHhzbTZjNTk0N3o0aXQ4bTRmaTV2djFvYm04N3Y1MzVxOTFkNjF4byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3hxk2aOwWmfOU/giphy.mp4";
+      const videoUrl = "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHhzbTZjNTk0N3o0aXQ4bTRmaTV2djFvYm04N3Y1MzVxOTFkNjF4byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3hxk2aOwWmfOU/giphy.mp4";
 
       try {
-        await sock.sendMessage(
-          jid,
-          {
+        await sock.sendMessage(jid, {
             video: { url: videoUrl },
             gifPlayback: true,
             caption: `@${targetNumber} wassaaa!!!`,
             mentions: [targetJid],
-          },
-          { quoted: m },
-        );
+          }, { quoted: m });
       } catch (e) {
         await sock.sendMessage(jid, { text: "Error con el video." });
       }
@@ -100,11 +84,7 @@ module.exports = [
       const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
 
       if (!quotedInfo || !quotedInfo.participant) {
-        return await sock.sendMessage(
-          jid,
-          { text: "Pendejo, responde a alguien." },
-          { quoted: m },
-        );
+        return await sock.sendMessage(jid, { text: "Pendejo, responde a alguien." }, { quoted: m });
       }
 
       const targetJid = quotedInfo.participant;
@@ -113,47 +93,18 @@ module.exports = [
       const videoPath = path.join(__dirname, "../media/kiss.mp4");
 
       try {
-        await sock.sendMessage(
-          jid,
-          {
+        await sock.sendMessage(jid, {
             video: fs.readFileSync(videoPath),
             gifPlayback: true,
             caption: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
             mentions: [targetJid],
-          },
-          { quoted: m },
-        );
+          }, { quoted: m });
       } catch (e) {
-        await sock.sendMessage(
-          jid,
-          {
+        await sock.sendMessage(jid, {
             text: `\`${senderName}\` _besó a_ @${targetNumber} 💋`,
             mentions: [targetJid],
-          },
-          { quoted: m },
-        );
+          }, { quoted: m });
       }
-    },
-  },
-  {
-    name: ".tickle",
-    execute: async (sock, m) => {
-      const jid = m.key.remoteJid;
-      const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
-      if (!quotedInfo || !quotedInfo.participant) return;
-
-      const targetJid = quotedInfo.participant;
-      const targetNumber = targetJid.split("@")[0].split(":")[0];
-      const senderName = m.pushName || "Alguien";
-
-      await sock.sendMessage(
-        jid,
-        {
-          text: `*${senderName} hace cosquillas a* @${targetNumber}`,
-          mentions: [targetJid],
-        },
-        { quoted: m },
-      );
     },
   },
   {
@@ -173,7 +124,7 @@ module.exports = [
         list += `║ 🦖 @${num}\n`;
       }
 
-      list += `╚ ========\n*Llamados*${getLegend()}`;
+      list += `╚ ========\n*Llamados*` + getLegend(sock);
       await sock.sendMessage(jid, { text: list, mentions }, { quoted: m });
     },
   },
@@ -185,78 +136,20 @@ module.exports = [
 
       const senderJid = m.key.participant || jid;
       const senderNumber = senderJid.split("@")[0].split(":")[0];
-      const gifUrl =
-        "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExank0a3B5ODl2dTJlbm5rMGw1MzVvcWswbzVnY2twYmNneDF2NmZkaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KpAPQVW9lWnWU/giphy.gif";
+      const gifUrl = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExank0a3B5ODl2dTJlbm5rMGw1MzVvcWswbzVnY2twYmNneDF2NmZkaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KpAPQVW9lWnWU/giphy.gif";
 
       try {
-        await sock.sendMessage(
-          jid,
-          {
+        await sock.sendMessage(jid, {
             video: { url: gifUrl },
             gifPlayback: true,
-            caption: `💨 @${senderNumber} ${getLegend()}`,
+            caption: `💨 @${senderNumber} ` + getLegend(sock),
             mentions: [senderJid],
-          },
-          { quoted: m },
-        );
+          }, { quoted: m });
       } catch (e) {
         await sock.sendMessage(jid, {
           text: `💨 @${senderNumber} dándose un toque...`,
           mentions: [senderJid],
         });
-      }
-    },
-  },
-  {
-    name: ".gg",
-    execute: async (sock, m) => {
-      const jid = m.key.remoteJid;
-      const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
-      if (!quotedInfo) return;
-
-      const quotedMsg = quotedInfo.quotedMessage;
-      const quotedBody =
-        quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text || "";
-
-      const amountMatch = quotedBody.match(/\d+/);
-      const amount = amountMatch ? parseInt(amountMatch[0]) : 0;
-
-      await sock.sendMessage(jid, {
-        react: {
-          text: "🏆",
-          key: {
-            ...m.key,
-            id: quotedInfo.stanzaId,
-            participant: quotedInfo.participant,
-          },
-        },
-      });
-
-      const winnerEntry = {
-        fecha: new Date().toLocaleString("es-MX"),
-        admin_nombre: m.pushName || "Admin",
-        admin_id: m.key.participant || jid,
-        ganador_nombre: "Usuario",
-        ganador_id: quotedInfo.participant,
-        monto: amount,
-        grupo: (await sock.groupMetadata(jid)).subject,
-      };
-
-      const dataPath = path.join(__dirname, "../data");
-      const filePath = path.join(dataPath, "subastas_registro.json");
-
-      try {
-        if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath);
-        let registro = fs.existsSync(filePath)
-          ? JSON.parse(fs.readFileSync(filePath, "utf-8"))
-          : [];
-        registro.push(winnerEntry);
-        await fs.promises.writeFile(
-          filePath,
-          JSON.stringify(registro, null, 2),
-        );
-      } catch (err) {
-        console.error(err);
       }
     },
   },
@@ -283,26 +176,19 @@ module.exports = [
           stats[p.ganador_id].total += p.monto;
         });
 
-        const ranking = Object.entries(stats).sort(
-          (a, b) => b[1].victorias - a[1].victorias,
-        );
+        const ranking = Object.entries(stats).sort((a, b) => b[1].victorias - a[1].victorias);
         let res = `*📊 RESUMEN DE SUBASTAS*\n_Top Ganadores_\n\n`;
         const allMentions = [];
 
         ranking.forEach(([id, user], i) => {
-          const medalla =
-            i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "👤";
+          const medalla = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "👤";
           const num = id.split("@")[0].split(":")[0];
           res += `${medalla} @${num}\n`;
-          res += `   └ Wins: ${user.victorias} | Total: $${user.total}\n`;
+          res += `   └ Wins: ${user.victorias} | Total: $${user.total}\n`;
           allMentions.push(id);
         });
 
-        await sock.sendMessage(
-          jid,
-          { text: res + getLegend(), mentions: allMentions },
-          { quoted: m },
-        );
+        await sock.sendMessage(jid, { text: res + getLegend(sock), mentions: allMentions }, { quoted: m });
       } catch (err) {
         await sock.sendMessage(jid, { text: "Error al procesar resumen." });
       }
@@ -314,41 +200,42 @@ module.exports = [
       const jid = m.key.remoteJid;
       const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
 
-      // 1. CASO: NO RESPONDIÓ A NADIE (Se la regresa al que mandó el comando)
       if (!quotedInfo || !quotedInfo.participant) {
         const senderName = m.pushName || "Alguien";
-        return await sock.sendMessage(
-          jid,
-          {
-            text: `che \`${senderName}\` joto mejor responde a alguien.`,
-          },
-          { quoted: m },
-        );
+        return await sock.sendMessage(jid, { text: `che \`${senderName}\` joto mejor responde a alguien.` }, { quoted: m });
       }
 
-      // 2. CASO: SÍ RESPONDIÓ A ALGUIEN
       const targetJid = quotedInfo.participant;
-      const groupMetadata = await sock.groupMetadata(jid);
-      const participant = groupMetadata.participants.find(
-        (p) => p.id === targetJid,
-      );
-
-      // Obtenemos el nombre del objetivo (Target)
-      const targetName =
-        participant?.name ||
-        participant?.notify ||
-        targetJid.split("@")[0].split(":")[0];
-
-      // Generamos un número al azar entre 1 y 100
+      const targetNumber = targetJid.split("@")[0].split(":")[0];
       const porcentaje = Math.floor(Math.random() * 100) + 1;
 
-      await sock.sendMessage(
-        jid,
-        {
-          text: `🏳️‍🌈 El usuario \`${targetName}\` es un **${porcentaje}%** gei.`,
-        },
-        { quoted: m },
-      );
+      await sock.sendMessage(jid, { text: `🏳️‍🌈 El usuario @${targetNumber} es un **${porcentaje}%** gei.`, mentions: [targetJid] }, { quoted: m });
+    },
+  },
+  {
+    name: ".papoi",
+    execute: async (sock, m) => {
+      const jid = m.key.remoteJid;
+      // Ruta exacta a la imagen JPG
+      const imgPath = path.resolve(__dirname, "../media/papoi.jpg");
+
+      // 1. Verificamos existencia para no tumbar la Rasp
+      if (!fs.existsSync(imgPath)) {
+        return await sock.sendMessage(jid, { 
+          text: "❌ No encontré papoi.jpg en la carpeta media." 
+        });
+      }
+
+      // 2. Enviamos la imagen con el caption y la leyenda corta
+      await sock.sendMessage(jid, { 
+        image: fs.readFileSync(imgPath), 
+        caption: "papoii 👉👈" + getLegend(sock) 
+      }, { quoted: m });
+
+      // 3. Reacción de berenjena al remitente
+      await sock.sendMessage(jid, { 
+        react: { text: '🍆', key: m.key } 
+      });
     },
   },
 ];
