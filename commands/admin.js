@@ -121,7 +121,7 @@ module.exports = [
       await sock.sendMessage(jid, { react: { text: "⚠️", key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } });
     },
   },
-  {
+ {
     name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
@@ -129,36 +129,35 @@ module.exports = [
       const args = body.split(" ");
       const modo = args[1]?.toLowerCase();
 
-      // 1. Validación de parámetros
       if (modo !== 'admin' && modo !== 'all') {
         await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
         return await sock.sendMessage(jid, { 
-          text: "⚠️ *Si los pendejos brillaran tu serias el sol.*\n\nUsa:\n• `.ruletaban all` - Sortear entre todos.\n• `.ruletaban admin` - Sortear entre admins." 
+          text: "⚠️ *Si los pendejos brillaran tú serías el sol.*\n\nUsa:\n• `.ruletaban all` - Sortear entre todos.\n• `.ruletaban admin` - Sortear entre admins." 
         }, { quoted: m });
       }
 
-      // 2. Seguridad
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
       try {
-        cconst groupMetadata = await sock.groupMetadata(jid);
-        const botId = sock.user.id.split(':')[0]; 
-        const creator = groupMetadata.owner; // ID del creador del grupo
+        // CORREGIDO: 'const' en lugar de 'cconst'
+        const groupMetadata = await sock.groupMetadata(jid);
+        const botId = sock.user.id.split(':')[0]; // Número limpio del bot
+        const creator = groupMetadata.owner || ""; // ID del creador del grupo
 
         let participantes = [];
-        // Filtro base: Que no sea el bot y que no sea el creador del grupo
-        const filtroBase = (p) => !p.id.includes(botId) && p.id !== creator;
+        // Filtro: Que no sea el bot Y que no sea el creador
+        const filtroInmunidad = (p) => !p.id.includes(botId) && p.id !== creator;
 
         if (modo === 'all') {
-            participantes = groupMetadata.participants.filter(filtroBase);
+          participantes = groupMetadata.participants.filter(filtroInmunidad);
         } else {
-            participantes = groupMetadata.participants.filter(p => 
-                filtroBase(p) && (p.admin === 'admin' || p.admin === 'superadmin')
-            );
+          participantes = groupMetadata.participants.filter(p => 
+            filtroInmunidad(p) && (p.admin === 'admin' || p.admin === 'superadmin')
+          );
         }
 
         if (participantes.length === 0) {
-           return await sock.sendMessage(jid, { text: "❌ No hay nadie a quien banear (qué milagro)." });
+          return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas en este sorteo." });
         }
 
         // 3. Generar menciones visibles y técnicas
@@ -170,7 +169,7 @@ module.exports = [
           mentions: mentions
         }, { quoted: m });
 
-        // 4. Cuenta regresiva con reacciones (9 al 0)
+        // 4. Cuenta regresiva con reacciones
         const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
         for (const emoji of emojis) {
           await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
@@ -190,7 +189,7 @@ module.exports = [
 
       } catch (e) {
         console.error("Error en ruletaban:", e);
-        await sock.sendMessage(jid, { text: "❌ No pude completar el sorteo." });
+        await sock.sendMessage(jid, { text: "❌ Error técnico al girar la ruleta." });
       }
     },
   },
