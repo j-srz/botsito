@@ -121,77 +121,68 @@ module.exports = [
       await sock.sendMessage(jid, { react: { text: "⚠️", key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } });
     },
   },
-{
-    name: ".pin",
+  {
+    name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
+      const args = body.split(" ");
+      const modo = args[1]?.toLowerCase(); // admin o all
 
+      // 1. Validación de parámetros: Si no es 'admin' o 'all', tachita y error
+      if (modo !== 'admin' && modo !== 'all') {
+        await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
+        return await sock.sendMessage(jid, { 
+          text: "⚠️ *Si los pendejos brillaran tu serias el sol.*\n\nUsa:\n• `.ruletaban all` - Sortear entre todos.\n• `.ruletaban admin` - Sortear entre admins." 
+        }, { quoted: m });
+      }
+
+      // 2. Verificación de seguridad (Solo un admin lanza el comando)
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
-      const quoted = m.message?.extendedTextMessage?.contextInfo;
-      if (!quoted || !quoted.stanzaId) {
-        return await sock.sendMessage(jid, { text: "❌ Responde al mensaje que quieres fijar." });
-      }
-
-      const args = body.split(" ");
-      let durationIndex = 1; // 1: 24h, 2: 7d, 3: 30d
-      if (args[1] === "7d") durationIndex = 2;
-      if (args[1] === "30d") durationIndex = 3;
-
-      const pinKey = {
-        remoteJid: jid,
-        fromMe: quoted.participant === (sock.user.id.split(":")[0] + "@s.whatsapp.net"),
-        id: quoted.stanzaId,
-        participant: quoted.participant,
-      };
-
       try {
-        // USANDO RELAYMESSAGE (TIPO 14 ES PIN)
-        await sock.relayMessage(jid, {
-          protocolMessage: {
-            key: pinKey,
-            type: 14,
-            pinMessage: { duration: durationIndex }
-          }
-        }, {});
+        const groupMetadata = await sock.groupMetadata(jid);
+        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        let participantes = [];
 
-        if (!fs.existsSync(path.join(__dirname, "../data"))) fs.mkdirSync(path.join(__dirname, "../data"));
-        fs.writeFileSync(pinDataPath, JSON.stringify(pinKey));
+        // Filtrar candidatos
+        if (modo === 'all') {
+          participantes = groupMetadata.participants.filter(p => p.id !== botId);
+        } else {
+          participantes = groupMetadata.participants.filter(p => p.id !== botId && (p.admin === 'admin' || p.admin === 'superadmin'));
+        }
 
-        await sock.sendMessage(jid, { react: { text: "📌", key: m.key } });
-      } catch (err) {
-        console.error("Error al fijar:", err);
-        await sock.sendMessage(jid, { text: "❌ Error de protocolo. ¿Soy admin?" });
-      }
-    },
-  },
-  {
-    name: ".unpin",
-    execute: async (sock, m) => {
-      const jid = m.key.remoteJid;
-      const sender = m.key.participant || m.key.remoteJid;
+        if (participantes.length === 0) return;
 
-      if (!(await isAdmin(sock, jid, sender))) return;
+        // 3. Mandar mensaje de inicio con mención a todos los que participan
+        const mentions = participantes.map(p => p.id);
+        const drawMsg = await sock.sendMessage(jid, {
+          text: `🎲 *Iniciando ruleta rusa del ban (${modo})...*\n\n_Sorteando entre los participantes mencionados._` + getLegend(sock),
+          mentions: mentions
+        }, { quoted: m });
 
-      if (!fs.existsSync(pinDataPath)) {
-        return await sock.sendMessage(jid, { text: "❌ No tengo registro de mensajes fijados." });
-      }
+        // 4. Cuenta regresiva con reacciones (9 al 0)
+        const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
+        for (const emoji of emojis) {
+          await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
+          // Delay de 1 segundo entre cada número para que se note en el cel
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
-      try {
-        const lastPinKey = JSON.parse(fs.readFileSync(pinDataPath, "utf-8"));
-        await sock.relayMessage(jid, {
-          protocolMessage: {
-            key: lastPinKey,
-            type: 14,
-            pinMessage: { duration: 0 } // 0 suele ser para quitar
-          }
-        }, {});
+        // 5. Selección y Banazo
+        const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
+        const victimaNum = victima.split('@')[0];
 
-        fs.unlinkSync(pinDataPath);
-        await sock.sendMessage(jid, { react: { text: "🔓", key: m.key } });
-      } catch (err) {
-        await sock.sendMessage(jid, { text: "❌ No pude quitar el fijado." });
+        await sock.groupParticipantsUpdate(jid, [victima], "remove");
+
+        await sock.sendMessage(jid, {
+          text: `💥 ¡BOOM! La suerte no estuvo de tu lado @${victimaNum}.\nRecibiste un banazo de ruleta. 👢`,
+          mentions: [victima]
+        }, { quoted: drawMsg });
+
+      } catch (e) {
+        console.error("Error en ruletaban:", e);
+        await sock.sendMessage(jid, { text: "❌ No pude completar el sorteo." });
       }
     },
   },

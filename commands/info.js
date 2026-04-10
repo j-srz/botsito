@@ -74,8 +74,7 @@ module.exports = [
         "• `.close [tiempo]` - Cerrar el grupo (Solo admins) (ej: .close 1m).\n";
       commandsList += "• `.open` - Abrir el grupo (Todos).\n";
       commandsList += "• `.resumen` - Ranking de subastas.";
-      commandsList += "• `.pin [tiempo]` - Fija un mensaje (ej: .pin 7d).\n";
-      commandsList += "• `.unpin` - Quita el mensaje fijado.\n";
+
 
       await sock.sendMessage(
         jid,
@@ -84,6 +83,29 @@ module.exports = [
       );
     },
   },
+
+  {
+    name: ".cm-sc",
+    execute: async (sock, m) => {
+      const jid = m.key.remoteJid;
+      let commandsList = "*📜 MENÚ DE COMANDOS REX SECRETOS*\n\n";
+
+      commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
+      
+      commandsList += "• `.ruletaban [all/admin]` - Ban al azar con sorteo y reacciones. 🎲💥\n";
+      commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
+
+
+      await sock.sendMessage(
+        jid,
+        { text: commandsList + getLegend(sock) },
+        { quoted: m },
+      );
+    },
+  },
+
+
+
 
   {
     name: ".id",
