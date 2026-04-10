@@ -189,7 +189,7 @@ module.exports = [
         
         if (victimaBase === creatorBase) {
             await sock.sendMessage(jid, {
-                text: `💥 ¡BOOM! La bala le dio a @${victimaBase}... pero es el *Creador del Grupo*. Mi código no me permite tocar a mi padre. 👑✨`,
+                text: `💥💥 ¡BOOM! @${victimaBase} Ups no se va a poder.`,
                 mentions: [victima]
             }, { quoted: drawMsg });
         } else {
@@ -197,7 +197,7 @@ module.exports = [
             // await sock.groupParticipantsUpdate(jid, [victima], "remove"); 
 
             await sock.sendMessage(jid, {
-                text: `💥 ¡BOOM! @${victimaBase} la suerte te abandonó.\n(Modo prueba: No fuiste eliminado). 👢`,
+                text: `💥 ¡BOOM! @${victimaBase} bye bay alv.`,
                 mentions: [victima]
             }, { quoted: drawMsg });
         }
