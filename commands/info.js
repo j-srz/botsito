@@ -1,6 +1,5 @@
 const { getLegend } = require("../utils/helpers");
 
-
 module.exports = [
   {
     name: ".user",
@@ -53,8 +52,6 @@ module.exports = [
       commandsList += "• `.smoke` - 🚬\n";
       commandsList += "• `.kiss` / `.tickle` - Interacción social.\n\n";
 
-
-
       commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
       commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
       commandsList += "• `.gg` - Registra ganador de subasta.\n\n";
@@ -67,7 +64,6 @@ module.exports = [
         "• `.close [tiempo]` - Cerrar el grupo (Solo admins) (ej: .close 1m).\n";
       commandsList += "• `.open` - Abrir el grupo (Todos).\n";
       commandsList += "• `.resumen` - Ranking de subastas.";
-
 
       await sock.sendMessage(
         jid,
@@ -85,17 +81,30 @@ module.exports = [
 
       commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
       commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
-    
-commandsList += "*🎲 RULETABAN*\n";
-      commandsList += "• `.ruletaban all/admin [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
+
+      commandsList += "*🎟️ RULETA (RIFAS)*\n";
+      commandsList += "• `.ruleta all/admin` - Sorteo rápido ✨\n";
+      commandsList += "• `.ruleta add m` - 🎟️ Inscripción por reacciones.\n";
+      commandsList += "• `.ruleta cs` - Sorteo de los inscritos.\n";
+      commandsList +=
+        "• `.ruleta cs add/remove @user` - Gestiona la tómbola.\n";
+      commandsList +=
+        "• `.ruleta cs show/reset` - Ver o vaciar la tómbola.\n\n";
+
+      commandsList += "*🎲 RULETABAN*\n";
+      commandsList +=
+        "• `.ruletaban all/admin [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
       commandsList += "• `.ruletaban cs` - Inicia sorteo de la lista negra.\n";
-      commandsList += "• `.ruletaban cs add @user1 @user2...` - Agrega a la lista.\n";
-      commandsList += "• `.ruletaban cs remove @user1...` - Perdona a alguien de la lista.\n";
-      commandsList += "• `.ruletaban cs show` - Mira quiénes están en la mira.\n";
-      commandsList += "• `.ruletaban cs reset` - Vacía la lista negra por completo.\n\n";
+      commandsList +=
+        "• `.ruletaban cs add @user1 @user2...` - Agrega a la lista.\n";
+      commandsList +=
+        "• `.ruletaban cs remove @user1...` - Perdona a alguien de la lista.\n";
+      commandsList +=
+        "• `.ruletaban cs show` - Mira quiénes están en la mira.\n";
+      commandsList +=
+        "• `.ruletaban cs reset` - Vacía la lista negra por completo.\n\n";
 
-
-            commandsList += "*🔧 MULTIMEDIA (Cola de Procesos) NO USAR*\n";
+      commandsList += "*🔧 MULTIMEDIA ( NO USAR )*\n";
       commandsList +=
         "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
       commandsList += "_Calidades: superlow, low, medium, high, superhigh_\n";
@@ -104,7 +113,6 @@ commandsList += "*🎲 RULETABAN*\n";
         "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
       commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";
 
-
       await sock.sendMessage(
         jid,
         { text: commandsList + getLegend(sock) },
@@ -112,9 +120,6 @@ commandsList += "*🎲 RULETABAN*\n";
       );
     },
   },
-
-
-
 
   {
     name: ".id",
