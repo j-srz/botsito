@@ -221,13 +221,13 @@ module.exports = [
         if (subModo === "show" || subModo === "showlist") {
           if (customList.length === 0)
             return await sock.sendMessage(jid, {
-              text: "La lista está más vacía que mi cuenta de banco. 💸",
+              text: "La lista está vacía.",
             });
           const listaTexto = customList
             .map((id, i) => `${i + 1}. @${id.split("@")[0]}`)
             .join("\n");
           return await sock.sendMessage(jid, {
-            text: `💀 *LISTA NEGRA CUSTOM:*\n\n${listaTexto}`,
+            text: `💀 *LISTA NEGRA:*\n\n${listaTexto}`,
             mentions: customList,
           });
         }
@@ -237,7 +237,7 @@ module.exports = [
           saveCustomList([]);
           await sock.sendMessage(jid, { react: { text: "🚮", key: m.key } });
           return await sock.sendMessage(jid, {
-            text: "🚮 *Lista Custom vaciada correctamente.*",
+            text: "🚮 *Lista vaciada correctamente.*",
           });
         }
       }
@@ -364,7 +364,7 @@ module.exports = [
           await sock.sendMessage(
             jid,
             {
-              text: `💥 ¡BOOM! @${victimaBase} Es el creador, se salvó de milagro. ✨`,
+              text: `💥 ¡BOOM! @${victimaBase} Salvado.`,
               mentions: [victima],
             },
             { quoted: lastWordsMsg },
@@ -374,7 +374,7 @@ module.exports = [
           await sock.sendMessage(
             jid,
             {
-              text: `💥 ¡BOOM! @${victimaBase} bye bay alv. 👢`,
+              text: `💥 ¡BOOM! @${victimaBase} bye bay alv.`,
               mentions: [victima],
             },
             { quoted: lastWordsMsg },

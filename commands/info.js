@@ -90,7 +90,7 @@ module.exports = [
       commandsList += "• `.ruletaban [all/admin] [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
       commandsList += "• `.ruletaban custom` - Inicia sorteo de la lista negra.\n";
       commandsList += "• `.ruletaban custom add @user` - Agrega a la lista.\n";
-      commandsList += "• `.ruletaban custom show` - Mira quiénes están en capilla.\n";
+      commandsList += "• `.ruletaban custom show` - Mira quiénes están en la lista.\n";
       commandsList += "• `.ruletaban custom restart` - Vacía la lista negra.\n\n";
 
 
