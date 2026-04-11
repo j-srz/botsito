@@ -129,6 +129,7 @@ module.exports = [
       
       const args = body.split(" ");
       const modo = args[1]?.toLowerCase();
+      const proteccion = args[2]?.toLowerCase(); // Aquí capturamos el 'soyjoto'
 
       if (modo !== 'admin' && modo !== 'all') {
         await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
@@ -141,8 +142,6 @@ module.exports = [
 
       try {
         const groupMetadata = await sock.groupMetadata(jid);
-        
-        // Función para limpiar cualquier ID (quita :4, @lid, @s.whatsapp.net)
         const cleanID = (id) => id ? id.split('@')[0].split(':')[0] : "";
 
         const botPnBase = cleanID(sock.user.id);
@@ -150,11 +149,23 @@ module.exports = [
         const creator = groupMetadata.owner || ""; 
         const creatorBase = cleanID(creator);
 
-        // FILTRO: Solo el bot es invisible para la ruleta
+        // --- LÓGICA DE FILTRADO CON PROTECCIÓN ---
         const filtroParticipantes = (p) => {
             const pIdBase = cleanID(p.id);
+            const senderBase = cleanID(sender);
+            
+            // 1. El bot SIEMPRE es invisible
             const esElBot = (pIdBase === botPnBase) || (botLidBase && pIdBase === botLidBase);
-            return !esElBot; 
+            if (esElBot) return false;
+
+            // 2. Si puso 'soyjoto', el sender es invisible (Inmunidad comprada)
+            if (proteccion === 'soyjoto' && pIdBase === senderBase) {
+                console.log("Inmunidad activada para el sender por confesar.");
+                return false;
+            }
+
+            // De lo contrario, todos entran
+            return true; 
         };
 
         let participantes = [];
@@ -176,7 +187,7 @@ module.exports = [
           mentions: mentions
         }, { quoted: m });
 
-        // --- BUCLE DE REACCIONES (9 AL 0) ---
+        // --- REACCIONES 9 A 0 ---
         const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
         for (const emoji of emojis) {
           await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
@@ -193,8 +204,8 @@ module.exports = [
                 mentions: [victima]
             }, { quoted: drawMsg });
         } else {
-            // Descomenta la línea de abajo para que el ban sea REAL
-            // await sock.groupParticipantsUpdate(jid, [victima], "remove"); 
+            // ELIMINACIÓN REAL
+            await sock.groupParticipantsUpdate(jid, [victima], "remove"); 
 
             await sock.sendMessage(jid, {
                 text: `💥 ¡BOOM! @${victimaBase} bye bay alv.`,

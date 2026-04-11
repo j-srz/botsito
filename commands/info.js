@@ -92,7 +92,7 @@ module.exports = [
 
       commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
       
-      commandsList += "• `.ruletaban [all/admin]` - Ban al azar con sorteo y reacciones. 🎲💥\n";
+      commandsList += "• `.ruletaban [all/admin]` - Ban al azar con sorteo\n";
       commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
 
 
