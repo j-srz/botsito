@@ -5,7 +5,7 @@ const { isAdmin, getLegend } = require("../utils/helpers");
 const pinDataPath = path.join(__dirname, "../data/current_pin.json");
 
 const customListPath = path.join(__dirname, "../data/ruleta_custom.json");
-
+const friendlyListPath = path.join(__dirname, "../data/ruleta_friendly.json");
 
 // Función para leer la lista custom
 const readCustomList = () => {
