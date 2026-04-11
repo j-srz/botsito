@@ -53,14 +53,7 @@ module.exports = [
       commandsList += "• `.smoke` - 🚬\n";
       commandsList += "• `.kiss` / `.tickle` - Interacción social.\n\n";
 
-      commandsList += "*🔧 MULTIMEDIA (Cola de Procesos)*\n";
-      commandsList +=
-        "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
-      commandsList += "_Calidades: superlow, low, medium, high, superhigh_\n";
-      commandsList += "• `.s [calidad]` - Crea sticker (Imagen/Video/GIF).\n";
-      commandsList +=
-        "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
-      commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";
+
 
       commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
       commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
@@ -91,9 +84,24 @@ module.exports = [
       let commandsList = "*📜 MENÚ DE COMANDOS REX SECRETOS*\n\n";
 
       commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
-      
-      commandsList += "• `.ruletaban [all/admin]` - Ban al azar con sorteo\n";
       commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
+    
+      commandsList += "*🎲 RULETABAN*\n";
+      commandsList += "• `.ruletaban [all/admin] [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
+      commandsList += "• `.ruletaban custom` - Inicia sorteo de la lista negra.\n";
+      commandsList += "• `.ruletaban custom add @user` - Agrega a la lista.\n";
+      commandsList += "• `.ruletaban custom show` - Mira quiénes están en capilla.\n";
+      commandsList += "• `.ruletaban custom restart` - Vacía la lista negra.\n\n";
+
+
+            commandsList += "*🔧 MULTIMEDIA (Cola de Procesos) NO USAR*\n";
+      commandsList +=
+        "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
+      commandsList += "_Calidades: superlow, low, medium, high, superhigh_\n";
+      commandsList += "• `.s [calidad]` - Crea sticker (Imagen/Video/GIF).\n";
+      commandsList +=
+        "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
+      commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";
 
 
       await sock.sendMessage(

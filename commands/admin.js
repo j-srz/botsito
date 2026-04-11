@@ -4,6 +4,23 @@ const { isAdmin, getLegend } = require("../utils/helpers");
 
 const pinDataPath = path.join(__dirname, "../data/current_pin.json");
 
+const customListPath = path.join(__dirname, "../data/ruleta_custom.json");
+
+// Función para leer la lista custom
+const readCustomList = () => {
+  if (!fs.existsSync(customListPath)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(customListPath, "utf-8"));
+  } catch (e) {
+    return [];
+  }
+};
+
+// Función para guardar la lista custom
+const saveCustomList = (list) => {
+  fs.writeFileSync(customListPath, JSON.stringify(list, null, 2));
+};
+
 module.exports = [
   {
     name: ".kick",
@@ -20,7 +37,9 @@ module.exports = [
 
         if (target === botId) {
           await sock.groupParticipantsUpdate(jid, [sender], "remove");
-          return await sock.sendMessage(jid, { text: "Intentaste kickearme... ¡Adiós!" });
+          return await sock.sendMessage(jid, {
+            text: "Intentaste kickearme... ¡Adiós!",
+          });
         }
 
         if (await isAdmin(sock, jid, sender)) {
@@ -37,7 +56,11 @@ module.exports = [
       const sender = m.key.participant || m.key.remoteJid;
       const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
 
-      if (quotedInfo && quotedInfo.quotedMessage && (await isAdmin(sock, jid, sender))) {
+      if (
+        quotedInfo &&
+        quotedInfo.quotedMessage &&
+        (await isAdmin(sock, jid, sender))
+      ) {
         const target = quotedInfo.participant;
         await sock.groupParticipantsUpdate(jid, [target], "promote");
         await sock.sendMessage(jid, { react: { text: "🆙", key: m.key } });
@@ -51,7 +74,11 @@ module.exports = [
       const sender = m.key.participant || m.key.remoteJid;
       const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
 
-      if (quotedInfo && quotedInfo.quotedMessage && (await isAdmin(sock, jid, sender))) {
+      if (
+        quotedInfo &&
+        quotedInfo.quotedMessage &&
+        (await isAdmin(sock, jid, sender))
+      ) {
         const target = quotedInfo.participant;
         await sock.groupParticipantsUpdate(jid, [target], "demote");
         await sock.sendMessage(jid, { react: { text: "⬇️", key: m.key } });
@@ -82,14 +109,26 @@ module.exports = [
 
       if (timerMs > 0) {
         await sock.sendMessage(jid, { react: { text: "⏳", key: m.key } });
-        await sock.sendMessage(jid, { text: `*Cierre programado:* Este grupo se cerrará en ${timeStr}. 🛡️` }, { quoted: m });
+        await sock.sendMessage(
+          jid,
+          {
+            text: `*Cierre programado:* Este grupo se cerrará en ${timeStr}. 🛡️`,
+          },
+          { quoted: m },
+        );
 
         setTimeout(async () => {
           await sock.groupSettingUpdate(jid, "announcement");
-          await sock.sendMessage(jid, { text: `_Cierre Automático_ 🔒\n_Tiempo cumplido (${timeStr})_${getLegend(sock)}` });
+          await sock.sendMessage(jid, {
+            text: `_Cierre Automático_ 🔒\n_Tiempo cumplido (${timeStr})_${getLegend(sock)}`,
+          });
         }, timerMs);
       } else {
-        await sock.sendMessage(jid, { text: "❌ Tiempo no válido. Usa ej: `.close 5m` o `.close 30s`" }, { quoted: m });
+        await sock.sendMessage(
+          jid,
+          { text: "❌ Tiempo no válido. Usa ej: `.close 5m` o `.close 30s`" },
+          { quoted: m },
+        );
       }
     },
   },
@@ -117,102 +156,230 @@ module.exports = [
       const targetJid = quotedInfo.participant;
       const targetNumber = targetJid.split("@")[0].split(":")[0];
 
-      await sock.sendMessage(jid, { text: `@${targetNumber} Callese alv o ban 🦖`, mentions: [targetJid] });
-      await sock.sendMessage(jid, { react: { text: "⚠️", key: { remoteJid: jid, fromMe: false, id: quotedInfo.stanzaId, participant: targetJid } } });
+      await sock.sendMessage(jid, {
+        text: `@${targetNumber} Callese alv o ban 🦖`,
+        mentions: [targetJid],
+      });
+      await sock.sendMessage(jid, {
+        react: {
+          text: "⚠️",
+          key: {
+            remoteJid: jid,
+            fromMe: false,
+            id: quotedInfo.stanzaId,
+            participant: targetJid,
+          },
+        },
+      });
     },
   },
-{
+  {
     name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
-      
       const args = body.split(" ");
-      const modo = args[1]?.toLowerCase();
-      const proteccion = args[2]?.toLowerCase(); // Aquí capturamos el 'soyjoto'
-
-      if (modo !== 'admin' && modo !== 'all') {
-        await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
-        return await sock.sendMessage(jid, { 
-          text: "⚠️ *Si los pendejos brillaran tú serías el sol.*\n\nUsa: `.ruletaban all` o `.ruletaban admin`" 
-        }, { quoted: m });
-      }
+      const modo = args[1]?.toLowerCase(); // all, admin, custom
+      const subModo = args[2]?.toLowerCase(); // add, show, restart (si modo es custom)
+      const proteccion = args[2]?.toLowerCase(); // 'soyjoto' (si modo es all/admin)
 
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
+      const cleanID = (id) => (id ? id.split("@")[0].split(":")[0] : "");
+      const botPnBase = cleanID(sock.user.id);
+      const botLidBase = cleanID(sock.user.lid || "");
+
+      // --- MANEJO DE SUBCOMANDOS CUSTOM ---
+      if (modo === "custom") {
+        const customList = readCustomList();
+
+        // 1. .ruletaban custom add @user
+        if (subModo === "add") {
+          const mentions =
+            m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+          if (mentions.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "⚠️ Menciona a los pendejos que quieres agregar.",
+            });
+
+          let agregados = 0;
+          mentions.forEach((id) => {
+            if (!customList.includes(id)) {
+              customList.push(id);
+              agregados++;
+            }
+          });
+
+          saveCustomList(customList);
+          await sock.sendMessage(jid, { react: { text: "📝", key: m.key } });
+          return await sock.sendMessage(jid, {
+            text: `✅ Se agregaron *${agregados}* a la lista negra. Total: ${customList.length}`,
+          });
+        }
+
+        // 2. .ruletaban custom show (o showlist)
+        if (subModo === "show" || subModo === "showlist") {
+          if (customList.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "La lista está más vacía que mi cuenta de banco. 💸",
+            });
+          const listaTexto = customList
+            .map((id, i) => `${i + 1}. @${id.split("@")[0]}`)
+            .join("\n");
+          return await sock.sendMessage(jid, {
+            text: `💀 *LISTA NEGRA CUSTOM:*\n\n${listaTexto}`,
+            mentions: customList,
+          });
+        }
+
+        // 3. .ruletaban custom restart
+        if (subModo === "restart") {
+          saveCustomList([]);
+          await sock.sendMessage(jid, { react: { text: "🚮", key: m.key } });
+          return await sock.sendMessage(jid, {
+            text: "🚮 *Lista Custom vaciada correctamente.*",
+          });
+        }
+      }
+
+      // --- VALIDACIÓN DE INICIO DE RULETA ---
+      if (!["all", "admin", "custom"].includes(modo)) {
+        await sock.sendMessage(jid, { react: { text: "❌", key: m.key } });
+        const helpMsg = `┌── [ 🎲 RULETA REX ] ──┐
+• \`.ruletaban all [soyjoto]\`
+• \`.ruletaban admin [soyjoto]\`
+
+*GESTIÓN CUSTOM:*
+• \`.ruletaban custom\` (Inicia sorteo)
+• \`.ruletaban custom add @user\`
+• \`.ruletaban custom show\`
+• \`.ruletaban custom restart\`
+└────────────────────┘`;
+        return await sock.sendMessage(jid, { text: helpMsg }, { quoted: m });
+      }
+
       try {
         const groupMetadata = await sock.groupMetadata(jid);
-        const cleanID = (id) => id ? id.split('@')[0].split(':')[0] : "";
+        const creatorBase = cleanID(groupMetadata.owner || "");
+        let participantes = [];
 
-        const botPnBase = cleanID(sock.user.id);
-        const botLidBase = cleanID(sock.user.lid || "");
-        const creator = groupMetadata.owner || ""; 
-        const creatorBase = cleanID(creator);
-
-        // --- LÓGICA DE FILTRADO CON PROTECCIÓN ---
-        const filtroParticipantes = (p) => {
-            const pIdBase = cleanID(p.id);
-            const senderBase = cleanID(sender);
-            
-            // 1. El bot SIEMPRE es invisible
-            const esElBot = (pIdBase === botPnBase) || (botLidBase && pIdBase === botLidBase);
-            if (esElBot) return false;
-
-            // 2. Si puso 'soyjoto', el sender es invisible (Inmunidad comprada)
-            if (proteccion === 'soyjoto' && pIdBase === senderBase) {
-                console.log("Inmunidad activada para el sender por confesar.");
-                return false;
-            }
-
-            // De lo contrario, todos entran
-            return true; 
+        // Filtro base de inmunidad (Bot)
+        const esInmune = (pId) => {
+          const pIdBase = cleanID(pId);
+          return (
+            pIdBase === botPnBase || (botLidBase && pIdBase === botLidBase)
+          );
         };
 
-        let participantes = [];
-        if (modo === 'all') {
-          participantes = groupMetadata.participants.filter(filtroParticipantes);
+        if (modo === "custom") {
+          const customList = readCustomList();
+          // Solo entran los de la lista que sigan en el grupo y NO sean el bot
+          participantes = groupMetadata.participants.filter(
+            (p) => customList.includes(p.id) && !esInmune(p.id),
+          );
         } else {
-          participantes = groupMetadata.participants.filter(p => 
-            filtroParticipantes(p) && (p.admin === 'admin' || p.admin === 'superadmin')
+          const filtroGral = (p) => {
+            const pIdBase = cleanID(p.id);
+            const senderBase = cleanID(sender);
+            if (esInmune(p.id)) return false;
+            if (proteccion === "soyjoto" && pIdBase === senderBase)
+              return false;
+            return true;
+          };
+
+          if (modo === "all") {
+            participantes = groupMetadata.participants.filter(filtroGral);
+          } else if (modo === "admin") {
+            participantes = groupMetadata.participants.filter(
+              (p) =>
+                filtroGral(p) &&
+                (p.admin === "admin" || p.admin === "superadmin"),
+            );
+          }
+        }
+
+        if (participantes.length === 0)
+          return await sock.sendMessage(jid, {
+            text: `❌ No hay víctimas para el modo: ${modo}`,
+          });
+
+        // --- SORTEO 9 A 0 ---
+        const mentions = participantes.map((p) => p.id);
+        const listaMenciones = participantes
+          .map((p) => `@${p.id.split("@")[0]}`)
+          .join(" ");
+
+        const drawMsg = await sock.sendMessage(
+          jid,
+          {
+            text:
+              `🎲 *Participantes en la mira (${modo.toUpperCase()}):*\n${listaMenciones}\n\n_Sorteando..._` +
+              getLegend(sock),
+            mentions: mentions,
+          },
+          { quoted: m },
+        );
+
+        for (const emoji of [
+          "9️⃣",
+          "8️⃣",
+          "7️⃣",
+          "6️⃣",
+          "5️⃣",
+          "4️⃣",
+          "3️⃣",
+          "2️⃣",
+          "1️⃣",
+          "0️⃣",
+        ]) {
+          await sock.sendMessage(jid, {
+            react: { text: emoji, key: drawMsg.key },
+          });
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        // --- ÚLTIMAS PALABRAS ---
+        const victima =
+          participantes[Math.floor(Math.random() * participantes.length)].id;
+        const victimaBase = cleanID(victima);
+
+        const lastWordsMsg = await sock.sendMessage(
+          jid,
+          {
+            text: `🎯 ¡TE TOCÓ @${victimaBase}! \n\nTienes *5 SEGUNDOS* para tus últimas palabras... ⏳`,
+            mentions: [victima],
+          },
+          { quoted: drawMsg },
+        );
+
+        for (const emoji of ["5️⃣", "4️⃣", "3️⃣", "2️⃣", "1️⃣", "💥"]) {
+          await sock.sendMessage(jid, {
+            react: { text: emoji, key: lastWordsMsg.key },
+          });
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        // --- EJECUCIÓN ---
+        if (victimaBase === creatorBase) {
+          await sock.sendMessage(
+            jid,
+            {
+              text: `💥 ¡BOOM! @${victimaBase} Es el creador, se salvó de milagro. ✨`,
+              mentions: [victima],
+            },
+            { quoted: lastWordsMsg },
+          );
+        } else {
+          await sock.groupParticipantsUpdate(jid, [victima], "remove");
+          await sock.sendMessage(
+            jid,
+            {
+              text: `💥 ¡BOOM! @${victimaBase} bye bay alv. 👢`,
+              mentions: [victima],
+            },
+            { quoted: lastWordsMsg },
           );
         }
-
-        if (participantes.length === 0) return await sock.sendMessage(jid, { text: "❌ No hay víctimas válidas." });
-
-        const mentions = participantes.map(p => p.id);
-        const listaMenciones = participantes.map(p => `@${p.id.split('@')[0]}`).join(' ');
-
-        const drawMsg = await sock.sendMessage(jid, {
-          text: `🎲 *Participantes en la mira:*\n${listaMenciones}\n\n_Sorteando..._` + getLegend(sock),
-          mentions: mentions
-        }, { quoted: m });
-
-        // --- REACCIONES 9 A 0 ---
-        const emojis = ['9️⃣', '8️⃣', '7️⃣', '6️⃣', '5️⃣', '4️⃣', '3️⃣', '2️⃣', '1️⃣', '0️⃣'];
-        for (const emoji of emojis) {
-          await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        // --- SELECCIÓN ---
-        const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
-        const victimaBase = cleanID(victima);
-        
-        if (victimaBase === creatorBase) {
-            await sock.sendMessage(jid, {
-                text: `💥💥 ¡BOOM! @${victimaBase} Ups no se va a poder.`,
-                mentions: [victima]
-            }, { quoted: drawMsg });
-        } else {
-            // ELIMINACIÓN REAL
-            await sock.groupParticipantsUpdate(jid, [victima], "remove"); 
-
-            await sock.sendMessage(jid, {
-                text: `💥 ¡BOOM! @${victimaBase} bye bay alv.`,
-                mentions: [victima]
-            }, { quoted: drawMsg });
-        }
-
       } catch (e) {
         console.error("❌ ERROR EN RULETABAN:", e);
       }
