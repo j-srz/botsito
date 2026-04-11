@@ -173,15 +173,15 @@ module.exports = [
       });
     },
   },
-  {
+{
     name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
       const args = body.split(" ");
-      const modo = args[1]?.toLowerCase(); // all, admin, custom
-      const subModo = args[2]?.toLowerCase(); // add, show, restart (si modo es custom)
-      const proteccion = args[2]?.toLowerCase(); // 'soyjoto' (si modo es all/admin)
+      const modo = args[1]?.toLowerCase(); // all, admin, cs
+      const subModo = args[2]?.toLowerCase(); // add, remove, show, reset
+      const proteccion = args[2]?.toLowerCase(); // 'soyjoto'
 
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
@@ -189,71 +189,65 @@ module.exports = [
       const botPnBase = cleanID(sock.user.id);
       const botLidBase = cleanID(sock.user.lid || "");
 
-      // --- MANEJO DE SUBCOMANDOS CUSTOM ---
-      if (modo === "custom") {
-        const customList = readCustomList();
+      // --- MANEJO DE SUBCOMANDOS CS (LISTA PERSONALIZADA) ---
+      if (modo === "cs") {
+        let currentList = readCustomList();
+        const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
-        // 1. .ruletaban custom add @user
+        // 1. .ruletaban cs add @user1 @user2...
         if (subModo === "add") {
-          const mentions =
-            m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
-          if (mentions.length === 0)
-            return await sock.sendMessage(jid, {
-              text: "⚠️ Menciona a los pendejos que quieres agregar.",
-            });
-
+          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Menciona a los pendejos para el registro." });
           let agregados = 0;
           mentions.forEach((id) => {
-            if (!customList.includes(id)) {
-              customList.push(id);
+            if (!currentList.includes(id)) {
+              currentList.push(id);
               agregados++;
             }
           });
-
-          saveCustomList(customList);
+          saveCustomList(currentList);
           await sock.sendMessage(jid, { react: { text: "📝", key: m.key } });
-          return await sock.sendMessage(jid, {
-            text: `✅ Se agregaron *${agregados}* a la lista negra. Total: ${customList.length}`,
-          });
+          return await sock.sendMessage(jid, { text: `✅ *${agregados}* agregados. Total en lista: ${currentList.length}` });
         }
 
-        // 2. .ruletaban custom show (o showlist)
-        if (subModo === "show" || subModo === "showlist") {
-          if (customList.length === 0)
-            return await sock.sendMessage(jid, {
-              text: "La lista está vacía.",
-            });
-          const listaTexto = customList
-            .map((id, i) => `${i + 1}. @${id.split("@")[0]}`)
-            .join("\n");
-          return await sock.sendMessage(jid, {
-            text: `💀 *LISTA NEGRA:*\n\n${listaTexto}`,
-            mentions: customList,
-          });
-        }
-
-        // 3. .ruletaban custom restart
-        if (subModo === "restart") {
-          saveCustomList([]);
+        // 2. .ruletaban cs remove @user1 @user2...
+        if (subModo === "remove") {
+          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Menciona a quiénes quieres perdonar." });
+          const inicial = currentList.length;
+          currentList = currentList.filter(id => !mentions.includes(id));
+          const borrados = inicial - currentList.length;
+          saveCustomList(currentList);
           await sock.sendMessage(jid, { react: { text: "🚮", key: m.key } });
-          return await sock.sendMessage(jid, {
-            text: "🚮 *Lista vaciada correctamente.*",
-          });
+          return await sock.sendMessage(jid, { text: `🗑️ Se eliminaron *${borrados}* de la lista negra.` });
+        }
+
+        // 3. .ruletaban cs show
+        if (subModo === "show" || subModo === "showlist") {
+          if (currentList.length === 0) return await sock.sendMessage(jid, { text: "La lista está limpia... por ahora. 🦖" });
+          const listaTexto = currentList.map((id, i) => `${i + 1}. @${id.split("@")[0]}`).join("\n");
+          return await sock.sendMessage(jid, { text: `💀 *LISTA NEGRA (cs):*\n\n${listaTexto}`, mentions: currentList });
+        }
+
+        // 4. .ruletaban cs reset
+        if (subModo === "reset") {
+          saveCustomList([]);
+          await sock.sendMessage(jid, { react: { text: "🧹", key: m.key } });
+          return await sock.sendMessage(jid, { text: "🧹 *Lista reseteada. Todos son inocentes de nuevo.*" });
         }
       }
 
-      // --- VALIDACIÓN DE INICIO DE RULETA ---
-      if (!["all", "admin", "custom"].includes(modo)) {
+      // --- VALIDACIÓN DE INICIO ---
+      if (!["all", "admin", "cs"].includes(modo)) {
         await sock.sendMessage(jid, { react: { text: "❌", key: m.key } });
         const helpMsg = `┌── [ 🎲 RULETA REX ] ──┐
 • \`.ruletaban all [soyjoto]\`
 • \`.ruletaban admin [soyjoto]\`
 
-*GESTIÓN CUSTOM:*
-• \`.ruletaban custom\` (Inicia sorteo)
-• \`.ruletaban custom add @user\`
-• \`.ruletaban custom show\`
-• \`.ruletaban custom restart\`
+*MODO CS (CUSTOM):*
+• \`.ruletaban cs\` (Sorteo)
+• \`.ruletaban cs add @user1 @user2...\`
+• \`.ruletaban cs remove @user1...\`
+• \`.ruletaban cs show\`
+• \`.ruletaban cs reset\`
 └────────────────────┘`;
         return await sock.sendMessage(jid, { text: helpMsg }, { quoted: m });
       }
@@ -263,122 +257,67 @@ module.exports = [
         const creatorBase = cleanID(groupMetadata.owner || "");
         let participantes = [];
 
-        // Filtro base de inmunidad (Bot)
         const esInmune = (pId) => {
           const pIdBase = cleanID(pId);
-          return (
-            pIdBase === botPnBase || (botLidBase && pIdBase === botLidBase)
-          );
+          return pIdBase === botPnBase || (botLidBase && pIdBase === botLidBase);
         };
 
-        if (modo === "custom") {
+        if (modo === "cs") {
           const customList = readCustomList();
-          // Solo entran los de la lista que sigan en el grupo y NO sean el bot
-          participantes = groupMetadata.participants.filter(
-            (p) => customList.includes(p.id) && !esInmune(p.id),
-          );
+          participantes = groupMetadata.participants.filter(p => customList.includes(p.id) && !esInmune(p.id));
         } else {
           const filtroGral = (p) => {
             const pIdBase = cleanID(p.id);
             const senderBase = cleanID(sender);
             if (esInmune(p.id)) return false;
-            if (proteccion === "soyjoto" && pIdBase === senderBase)
-              return false;
+            if (proteccion === "soyjoto" && pIdBase === senderBase) return false;
             return true;
           };
 
           if (modo === "all") {
             participantes = groupMetadata.participants.filter(filtroGral);
           } else if (modo === "admin") {
-            participantes = groupMetadata.participants.filter(
-              (p) =>
-                filtroGral(p) &&
-                (p.admin === "admin" || p.admin === "superadmin"),
+            participantes = groupMetadata.participants.filter(p => 
+                filtroGral(p) && (p.admin === "admin" || p.admin === "superadmin")
             );
           }
         }
 
-        if (participantes.length === 0)
-          return await sock.sendMessage(jid, {
-            text: `❌ No hay víctimas para el modo: ${modo}`,
-          });
+        if (participantes.length === 0) return await sock.sendMessage(jid, { text: `❌ No hay nadie en la mira (${modo}).` });
 
         // --- SORTEO 9 A 0 ---
-        const mentions = participantes.map((p) => p.id);
-        const listaMenciones = participantes
-          .map((p) => `@${p.id.split("@")[0]}`)
-          .join(" ");
-
-        const drawMsg = await sock.sendMessage(
-          jid,
-          {
-            text:
-              `🎲 *Participantes en la mira (${modo.toUpperCase()}):*\n${listaMenciones}\n\n_Sorteando..._` +
-              getLegend(sock),
+        const mentions = participantes.map(p => p.id);
+        const listaMenciones = participantes.map(p => `@${p.id.split("@")[0]}`).join(" ");
+        const drawMsg = await sock.sendMessage(jid, {
+            text: `🎲 *Participantes en la mira (${modo.toUpperCase()}):*\n${listaMenciones}\n\n_Sorteando..._` + getLegend(sock),
             mentions: mentions,
-          },
-          { quoted: m },
-        );
+          }, { quoted: m });
 
-        for (const emoji of [
-          "9️⃣",
-          "8️⃣",
-          "7️⃣",
-          "6️⃣",
-          "5️⃣",
-          "4️⃣",
-          "3️⃣",
-          "2️⃣",
-          "1️⃣",
-          "0️⃣",
-        ]) {
-          await sock.sendMessage(jid, {
-            react: { text: emoji, key: drawMsg.key },
-          });
-          await new Promise((res) => setTimeout(res, 1000));
+        for (const emoji of ["9️⃣","8️⃣","7️⃣","6️⃣","5️⃣","4️⃣","3️⃣","2️⃣","1️⃣","0️⃣"]) {
+          await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
+          await new Promise(res => setTimeout(res, 1000));
         }
 
         // --- ÚLTIMAS PALABRAS ---
-        const victima =
-          participantes[Math.floor(Math.random() * participantes.length)].id;
+        const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
         const victimaBase = cleanID(victima);
 
-        const lastWordsMsg = await sock.sendMessage(
-          jid,
-          {
+        const lastWordsMsg = await sock.sendMessage(jid, {
             text: `🎯 ¡TE TOCÓ @${victimaBase}! \n\nTienes *5 SEGUNDOS* para tus últimas palabras... ⏳`,
             mentions: [victima],
-          },
-          { quoted: drawMsg },
-        );
+          }, { quoted: drawMsg });
 
         for (const emoji of ["5️⃣", "4️⃣", "3️⃣", "2️⃣", "1️⃣", "💥"]) {
-          await sock.sendMessage(jid, {
-            react: { text: emoji, key: lastWordsMsg.key },
-          });
-          await new Promise((res) => setTimeout(res, 1000));
+          await sock.sendMessage(jid, { react: { text: emoji, key: lastWordsMsg.key } });
+          await new Promise(res => setTimeout(res, 1000));
         }
 
         // --- EJECUCIÓN ---
         if (victimaBase === creatorBase) {
-          await sock.sendMessage(
-            jid,
-            {
-              text: `💥 ¡BOOM! @${victimaBase} Salvado.`,
-              mentions: [victima],
-            },
-            { quoted: lastWordsMsg },
-          );
+          await sock.sendMessage(jid, { text: `💥 ¡BOOM! @${victimaBase} Ups... se salvó el jefe.`, mentions: [victima] }, { quoted: lastWordsMsg });
         } else {
           await sock.groupParticipantsUpdate(jid, [victima], "remove");
-          await sock.sendMessage(
-            jid,
-            {
-              text: `💥 ¡BOOM! @${victimaBase} bye bay alv.`,
-              mentions: [victima],
-            },
-            { quoted: lastWordsMsg },
-          );
+          await sock.sendMessage(jid, { text: `💥 ¡BOOM! @${victimaBase} bye bay alv. 👢`, mentions: [victima] }, { quoted: lastWordsMsg });
         }
       } catch (e) {
         console.error("❌ ERROR EN RULETABAN:", e);

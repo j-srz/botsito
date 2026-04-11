@@ -86,12 +86,13 @@ module.exports = [
       commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
       commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
     
-      commandsList += "*🎲 RULETABAN*\n";
-      commandsList += "• `.ruletaban [all/admin] [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
-      commandsList += "• `.ruletaban custom` - Inicia sorteo de la lista negra.\n";
-      commandsList += "• `.ruletaban custom add @user` - Agrega a la lista.\n";
-      commandsList += "• `.ruletaban custom show` - Mira quiénes están en la lista.\n";
-      commandsList += "• `.ruletaban custom restart` - Vacía la lista negra.\n\n";
+commandsList += "*🎲 RULETABAN*\n";
+      commandsList += "• `.ruletaban all/admin [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
+      commandsList += "• `.ruletaban cs` - Inicia sorteo de la lista negra.\n";
+      commandsList += "• `.ruletaban cs add @user1 @user2...` - Agrega a la lista.\n";
+      commandsList += "• `.ruletaban cs remove @user1...` - Perdona a alguien de la lista.\n";
+      commandsList += "• `.ruletaban cs show` - Mira quiénes están en la mira.\n";
+      commandsList += "• `.ruletaban cs reset` - Vacía la lista negra por completo.\n\n";
 
 
             commandsList += "*🔧 MULTIMEDIA (Cola de Procesos) NO USAR*\n";
