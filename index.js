@@ -9,6 +9,7 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 const { isAdmin } = require('./utils/helpers'); 
+const { readFriendlyList, saveFriendlyList } = require('./commands/admin');
 
 // 1. CARGA SEGURA DE GRUPOS
 const rawGroups = process.env.ALLOWED_GROUPS || ""; 
@@ -59,9 +60,34 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
         const m = messages[0];
+
+        // --- 1. DETECCIÓN DE REACCIONES (EL "OÍDO" DEL BOT) ---
+        const reaction = m.message?.reactionMessage;
+        if (reaction) {
+            try {
+                let data = readFriendlyList(); // Esta función viene de admin.js
+                
+                // Verificamos si están reaccionando al mensaje de la rifa activa
+                if (data.messageId && reaction.key.id === data.messageId) {
+                    const reactor = m.key.participant || m.key.remoteJid;
+                    
+                    // Si el usuario no está en la lista, lo metemos
+                    if (!data.participants.includes(reactor)) {
+                        data.participants.push(reactor);
+                        saveFriendlyList(data);
+                        console.log(`✅ Participante anotado por reacción: ${reactor}`);
+                    }
+                }
+            } catch (e) {
+                console.error("❌ Error en el listener de reacciones:", e);
+            }
+            return; // Muy importante: detenemos el proceso aquí porque las reacciones no son comandos
+        }
+
+        // --- 2. LÓGICA ORIGINAL DE COMANDOS ---
         if (!m.message || m.key.fromMe) return;
 
         // Extraer texto
@@ -76,7 +102,6 @@ async function startBot() {
         const sender = m.key.participant || m.key.remoteJid;
 
         const cmdName = Array.from(commands.keys()).find(n => text === n || text.startsWith(n + ' '));
-
         if (cmdName) {
             // LOG DE DEBUG (Aparecerá en pm2 logs)
             console.log(`📩 Comando detectado: ${cmdName} | Chat: ${jid} | Sender: ${sender}`);
