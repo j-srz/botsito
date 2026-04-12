@@ -133,7 +133,7 @@ module.exports = [
         const sentMsg = await sock.sendMessage(
           jid,
           {
-            text: `> _Cierre programado: El grupo se cerrará en ${timeStr}._`,
+            text: `> _Cierre programado: El grupo se cerrará en ${timeStr}_`,
           },
           { quoted: m },
         );
