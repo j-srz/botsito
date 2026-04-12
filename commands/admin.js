@@ -17,17 +17,18 @@ const readCustomList = () => {
   }
 };
 
-
-
 const readFriendlyList = () => {
-    if (!fs.existsSync(friendlyListPath)) return { messageId: null, participants: [] };
-    try {
-        return JSON.parse(fs.readFileSync(friendlyListPath, 'utf-8'));
-    } catch (e) { return { messageId: null, participants: [] }; }
+  if (!fs.existsSync(friendlyListPath))
+    return { messageId: null, participants: [] };
+  try {
+    return JSON.parse(fs.readFileSync(friendlyListPath, "utf-8"));
+  } catch (e) {
+    return { messageId: null, participants: [] };
+  }
 };
 
 const saveFriendlyList = (data) => {
-    fs.writeFileSync(friendlyListPath, JSON.stringify(data, null, 2));
+  fs.writeFileSync(friendlyListPath, JSON.stringify(data, null, 2));
 };
 
 // Función para guardar la lista custom
@@ -99,7 +100,7 @@ module.exports = [
       }
     },
   },
-{
+  {
     name: ".close",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
@@ -114,7 +115,9 @@ module.exports = [
       if (!timeStr) {
         await sock.groupSettingUpdate(jid, "announcement");
         // Solo reacciona con el candado al comando original
-        return await sock.sendMessage(jid, { react: { text: "🔒", key: m.key } });
+        return await sock.sendMessage(jid, {
+          react: { text: "🔒", key: m.key },
+        });
       }
 
       // --- CASO 2: CIERRE PROGRAMADO ---
@@ -125,23 +128,40 @@ module.exports = [
       if (timerMs >= 4000) {
         // Reacciona al comando para confirmar que recibió la orden
         await sock.sendMessage(jid, { react: { text: "⏳", key: m.key } });
-        
+
         // Este es el ÚNICO mensaje de texto que mandará
-        const sentMsg = await sock.sendMessage(jid, {
-          text: `> 🛡️ *Cierre programado:* El grupo se cerrará en ${timeStr}.`
-        }, { quoted: m });
+        const sentMsg = await sock.sendMessage(
+          jid,
+          {
+            text: `> _Cierre programado: El grupo se cerrará en ${timeStr}._`,
+          },
+          { quoted: m },
+        );
 
         // Cuenta regresiva usando el mensaje de arriba
-        setTimeout(() => sock.sendMessage(jid, { react: { text: "3️⃣", key: sentMsg.key } }), timerMs - 3000);
-        setTimeout(() => sock.sendMessage(jid, { react: { text: "2️⃣", key: sentMsg.key } }), timerMs - 2000);
-        setTimeout(() => sock.sendMessage(jid, { react: { text: "1️⃣", key: sentMsg.key } }), timerMs - 1000);
+        setTimeout(
+          () =>
+            sock.sendMessage(jid, { react: { text: "3️⃣", key: sentMsg.key } }),
+          timerMs - 3000,
+        );
+        setTimeout(
+          () =>
+            sock.sendMessage(jid, { react: { text: "2️⃣", key: sentMsg.key } }),
+          timerMs - 2000,
+        );
+        setTimeout(
+          () =>
+            sock.sendMessage(jid, { react: { text: "1️⃣", key: sentMsg.key } }),
+          timerMs - 1000,
+        );
 
         // Cierre final: Solo cambia el ajuste y reacciona
         setTimeout(async () => {
           await sock.groupSettingUpdate(jid, "announcement");
-          await sock.sendMessage(jid, { react: { text: "🔒", key: sentMsg.key } });
+          await sock.sendMessage(jid, {
+            react: { text: "🔒", key: sentMsg.key },
+          });
         }, timerMs);
-
       } else if (timerMs > 0) {
         // Para tiempos muy cortos
         await sock.sendMessage(jid, { react: { text: "⏳", key: m.key } });
@@ -154,7 +174,7 @@ module.exports = [
       }
     },
   },
-{
+  {
     name: ".open",
     execute: async (sock, m) => {
       const jid = m.key.remoteJid;
@@ -165,7 +185,6 @@ module.exports = [
       await sock.groupSettingUpdate(jid, "not_announcement");
 
       await sock.sendMessage(jid, { react: { text: "🔓", key: m.key } });
-
     },
   },
   {
@@ -195,7 +214,7 @@ module.exports = [
       });
     },
   },
-{
+  {
     name: ".ruletaban",
     execute: async (sock, m, body) => {
       const jid = m.key.remoteJid;
@@ -214,11 +233,15 @@ module.exports = [
       // --- MANEJO DE SUBCOMANDOS CS (LISTA PERSONALIZADA) ---
       if (modo === "cs") {
         let currentList = readCustomList();
-        const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+        const mentions =
+          m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         // 1. .ruletaban cs add @user1 @user2...
         if (subModo === "add") {
-          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Menciona a los pendejos para el registro." });
+          if (mentions.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "⚠️ Menciona a los pendejos para el registro.",
+            });
           let agregados = 0;
           mentions.forEach((id) => {
             if (!currentList.includes(id)) {
@@ -228,32 +251,49 @@ module.exports = [
           });
           saveCustomList(currentList);
           await sock.sendMessage(jid, { react: { text: "📝", key: m.key } });
-          return await sock.sendMessage(jid, { text: `✅ *${agregados}* agregados. Total en lista: ${currentList.length}` });
+          return await sock.sendMessage(jid, {
+            text: `✅ *${agregados}* agregados. Total en lista: ${currentList.length}`,
+          });
         }
 
         // 2. .ruletaban cs remove @user1 @user2...
         if (subModo === "remove") {
-          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Menciona a quiénes quieres perdonar." });
+          if (mentions.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "⚠️ Menciona a quiénes quieres perdonar.",
+            });
           const inicial = currentList.length;
-          currentList = currentList.filter(id => !mentions.includes(id));
+          currentList = currentList.filter((id) => !mentions.includes(id));
           const borrados = inicial - currentList.length;
           saveCustomList(currentList);
           await sock.sendMessage(jid, { react: { text: "🚮", key: m.key } });
-          return await sock.sendMessage(jid, { text: `🗑️ Se eliminaron *${borrados}* de la lista negra.` });
+          return await sock.sendMessage(jid, {
+            text: `🗑️ Se eliminaron *${borrados}* de la lista negra.`,
+          });
         }
 
         // 3. .ruletaban cs show
         if (subModo === "show" || subModo === "showlist") {
-          if (currentList.length === 0) return await sock.sendMessage(jid, { text: "La lista está limpia... por ahora. 🦖" });
-          const listaTexto = currentList.map((id, i) => `${i + 1}. @${id.split("@")[0]}`).join("\n");
-          return await sock.sendMessage(jid, { text: `💀 *LISTA NEGRA (cs):*\n\n${listaTexto}`, mentions: currentList });
+          if (currentList.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "La lista está limpia... por ahora. 🦖",
+            });
+          const listaTexto = currentList
+            .map((id, i) => `${i + 1}. @${id.split("@")[0]}`)
+            .join("\n");
+          return await sock.sendMessage(jid, {
+            text: `💀 *LISTA NEGRA (cs):*\n\n${listaTexto}`,
+            mentions: currentList,
+          });
         }
 
         // 4. .ruletaban cs reset
         if (subModo === "reset") {
           saveCustomList([]);
           await sock.sendMessage(jid, { react: { text: "🧹", key: m.key } });
-          return await sock.sendMessage(jid, { text: "🧹 *Lista reseteada. Todos son inocentes de nuevo.*" });
+          return await sock.sendMessage(jid, {
+            text: "🧹 *Lista reseteada. Todos son inocentes de nuevo.*",
+          });
         }
       }
 
@@ -281,65 +321,117 @@ module.exports = [
 
         const esInmune = (pId) => {
           const pIdBase = cleanID(pId);
-          return pIdBase === botPnBase || (botLidBase && pIdBase === botLidBase);
+          return (
+            pIdBase === botPnBase || (botLidBase && pIdBase === botLidBase)
+          );
         };
 
         if (modo === "cs") {
           const customList = readCustomList();
-          participantes = groupMetadata.participants.filter(p => customList.includes(p.id) && !esInmune(p.id));
+          participantes = groupMetadata.participants.filter(
+            (p) => customList.includes(p.id) && !esInmune(p.id),
+          );
         } else {
           const filtroGral = (p) => {
             const pIdBase = cleanID(p.id);
             const senderBase = cleanID(sender);
             if (esInmune(p.id)) return false;
-            if (proteccion === "soyjoto" && pIdBase === senderBase) return false;
+            if (proteccion === "soyjoto" && pIdBase === senderBase)
+              return false;
             return true;
           };
 
           if (modo === "all") {
             participantes = groupMetadata.participants.filter(filtroGral);
           } else if (modo === "admin") {
-            participantes = groupMetadata.participants.filter(p => 
-                filtroGral(p) && (p.admin === "admin" || p.admin === "superadmin")
+            participantes = groupMetadata.participants.filter(
+              (p) =>
+                filtroGral(p) &&
+                (p.admin === "admin" || p.admin === "superadmin"),
             );
           }
         }
 
-        if (participantes.length === 0) return await sock.sendMessage(jid, { text: `❌ No hay nadie en la mira (${modo}).` });
+        if (participantes.length === 0)
+          return await sock.sendMessage(jid, {
+            text: `❌ No hay nadie en la mira (${modo}).`,
+          });
 
         // --- SORTEO 9 A 0 ---
-        const mentions = participantes.map(p => p.id);
-        const listaMenciones = participantes.map(p => `@${p.id.split("@")[0]}`).join(" ");
-        const drawMsg = await sock.sendMessage(jid, {
-            text: `🎲 *Participantes en la mira (${modo.toUpperCase()}):*\n${listaMenciones}\n\n_Sorteando..._` + getLegend(sock),
+        const mentions = participantes.map((p) => p.id);
+        const listaMenciones = participantes
+          .map((p) => `@${p.id.split("@")[0]}`)
+          .join(" ");
+        const drawMsg = await sock.sendMessage(
+          jid,
+          {
+            text:
+              `🎲 *Participantes en la mira (${modo.toUpperCase()}):*\n${listaMenciones}\n\n_Sorteando..._` +
+              getLegend(sock),
             mentions: mentions,
-          }, { quoted: m });
+          },
+          { quoted: m },
+        );
 
-        for (const emoji of ["9️⃣","8️⃣","7️⃣","6️⃣","5️⃣","4️⃣","3️⃣","2️⃣","1️⃣","0️⃣"]) {
-          await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
-          await new Promise(res => setTimeout(res, 1000));
+        for (const emoji of [
+          "9️⃣",
+          "8️⃣",
+          "7️⃣",
+          "6️⃣",
+          "5️⃣",
+          "4️⃣",
+          "3️⃣",
+          "2️⃣",
+          "1️⃣",
+          "0️⃣",
+        ]) {
+          await sock.sendMessage(jid, {
+            react: { text: emoji, key: drawMsg.key },
+          });
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
         // --- ÚLTIMAS PALABRAS ---
-        const victima = participantes[Math.floor(Math.random() * participantes.length)].id;
+        const victima =
+          participantes[Math.floor(Math.random() * participantes.length)].id;
         const victimaBase = cleanID(victima);
 
-        const lastWordsMsg = await sock.sendMessage(jid, {
+        const lastWordsMsg = await sock.sendMessage(
+          jid,
+          {
             text: `🎯 ¡TE TOCÓ @${victimaBase}! \n\nTienes *5 SEGUNDOS* para tus últimas palabras... ⏳`,
             mentions: [victima],
-          }, { quoted: drawMsg });
+          },
+          { quoted: drawMsg },
+        );
 
         for (const emoji of ["5️⃣", "4️⃣", "3️⃣", "2️⃣", "1️⃣", "💥"]) {
-          await sock.sendMessage(jid, { react: { text: emoji, key: lastWordsMsg.key } });
-          await new Promise(res => setTimeout(res, 1000));
+          await sock.sendMessage(jid, {
+            react: { text: emoji, key: lastWordsMsg.key },
+          });
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
         // --- EJECUCIÓN ---
         if (victimaBase === creatorBase) {
-          await sock.sendMessage(jid, { text: `💥 ¡BOOM! @${victimaBase} Ups... se salvó el jefe.`, mentions: [victima] }, { quoted: lastWordsMsg });
+          await sock.sendMessage(
+            jid,
+            {
+              text: `💥 ¡BOOM! @${victimaBase} Ups... se salvó el jefe.`,
+              mentions: [victima],
+            },
+            { quoted: lastWordsMsg },
+          );
         } else {
           await sock.groupParticipantsUpdate(jid, [victima], "remove");
-          await sock.sendMessage(jid, { text: `💥 ¡BOOM! @${victimaBase} bye bay alv. 👢`, mentions: [victima] }, { quoted: lastWordsMsg });
+          await sock.sendMessage(
+            jid,
+            {
+              text: `💥 ¡BOOM! @${victimaBase} bye bay alv. 👢`,
+              mentions: [victima],
+            },
+            { quoted: lastWordsMsg },
+          );
         }
       } catch (e) {
         console.error("❌ ERROR EN RULETABAN:", e);
@@ -364,31 +456,46 @@ module.exports = [
 
       // --- MODO: REGISTRO POR MENSAJE (.ruleta add m) ---
       if (modo === "add" && subModo === "m") {
-          const sentMsg = await sock.sendMessage(jid, { 
-              text: "🦖 *¡RIFA REX ACTIVA!* 🦖\n\nReaccionen a este mensaje con cualquier emoji para entrar al sorteo.\n\n_Usa .ruleta cs para rifar entre los que se anoten._" 
-          });
-          saveFriendlyList({ messageId: sentMsg.key.id, participants: [] });
-          await sock.sendMessage(jid, { react: { text: "🎟️", key: m.key } });
-          return;
+        const sentMsg = await sock.sendMessage(jid, {
+          text: "🦖 *¡RIFA REX ACTIVA!* 🦖\n\nReaccionen a este mensaje con cualquier emoji para entrar al sorteo.\n\n_Usa .ruleta cs para rifar entre los que se anoten._",
+        });
+        saveFriendlyList({ messageId: sentMsg.key.id, participants: [] });
+        await sock.sendMessage(jid, { react: { text: "🎟️", key: m.key } });
+        return;
       }
 
       // --- MODO CS (GESTIÓN DE LISTA AMIGABLE) ---
       if (modo === "cs") {
         let data = readFriendlyList();
-        const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+        const mentions =
+          m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         if (subModo === "add") {
-          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Etiqueta a alguien." });
-          mentions.forEach(id => { if (!data.participants.includes(id)) data.participants.push(id); });
+          if (mentions.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "⚠️ Etiqueta a alguien.",
+            });
+          mentions.forEach((id) => {
+            if (!data.participants.includes(id)) data.participants.push(id);
+          });
           saveFriendlyList(data);
-          return await sock.sendMessage(jid, { text: `✅ Se agregaron *${mentions.length}* a la tómbola.` });
+          return await sock.sendMessage(jid, {
+            text: `✅ Se agregaron *${mentions.length}* a la tómbola.`,
+          });
         }
 
         if (subModo === "remove") {
-          if (mentions.length === 0) return await sock.sendMessage(jid, { text: "⚠️ Etiqueta a quién quitar." });
-          data.participants = data.participants.filter(id => !mentions.includes(id));
+          if (mentions.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "⚠️ Etiqueta a quién quitar.",
+            });
+          data.participants = data.participants.filter(
+            (id) => !mentions.includes(id),
+          );
           saveFriendlyList(data);
-          return await sock.sendMessage(jid, { text: "🗑️ Tómbola actualizada." });
+          return await sock.sendMessage(jid, {
+            text: "🗑️ Tómbola actualizada.",
+          });
         }
 
         if (subModo === "reset") {
@@ -397,55 +504,92 @@ module.exports = [
         }
 
         if (subModo === "show") {
-          if (data.participants.length === 0) return await sock.sendMessage(jid, { text: "La tómbola está vacía." });
-          const lista = data.participants.map((id, i) => `${i + 1}. @${id.split('@')[0]}`).join('\n');
-          return await sock.sendMessage(jid, { text: `🎟️ *LISTA PARA SORTEO:*\n\n${lista}`, mentions: data.participants });
+          if (data.participants.length === 0)
+            return await sock.sendMessage(jid, {
+              text: "La tómbola está vacía.",
+            });
+          const lista = data.participants
+            .map((id, i) => `${i + 1}. @${id.split("@")[0]}`)
+            .join("\n");
+          return await sock.sendMessage(jid, {
+            text: `🎟️ *LISTA PARA SORTEO:*\n\n${lista}`,
+            mentions: data.participants,
+          });
         }
       }
 
       // --- EJECUCIÓN DEL SORTEO (all, admin, cs) ---
       if (!["all", "admin", "cs"].includes(modo)) {
-          return await sock.sendMessage(jid, { text: "Usa: `.ruleta all`, `.ruleta admin` o `.ruleta cs`" });
+        return await sock.sendMessage(jid, {
+          text: "Usa: `.ruleta all`, `.ruleta admin` o `.ruleta cs`",
+        });
       }
 
       try {
         const groupMetadata = await sock.groupMetadata(jid);
         let participantes = [];
-        const esInmune = (pId) => cleanID(pId) === botPnBase || (botLidBase && cleanID(pId) === botLidBase);
+        const esInmune = (pId) =>
+          cleanID(pId) === botPnBase ||
+          (botLidBase && cleanID(pId) === botLidBase);
 
         if (modo === "cs") {
           const data = readFriendlyList();
-          participantes = groupMetadata.participants.filter(p => data.participants.includes(p.id) && !esInmune(p.id));
+          participantes = groupMetadata.participants.filter(
+            (p) => data.participants.includes(p.id) && !esInmune(p.id),
+          );
         } else {
           const filtro = (p) => !esInmune(p.id);
-          if (modo === "all") participantes = groupMetadata.participants.filter(filtro);
-          else if (modo === "admin") participantes = groupMetadata.participants.filter(p => filtro(p) && (p.admin));
+          if (modo === "all")
+            participantes = groupMetadata.participants.filter(filtro);
+          else if (modo === "admin")
+            participantes = groupMetadata.participants.filter(
+              (p) => filtro(p) && p.admin,
+            );
         }
 
-        if (participantes.length === 0) return await sock.sendMessage(jid, { text: "❌ No hay nadie para el sorteo." });
+        if (participantes.length === 0)
+          return await sock.sendMessage(jid, {
+            text: "❌ No hay nadie para el sorteo.",
+          });
 
         // AHORA SÍ: MENCIONAR A TODOS EN EL MENSAJE INICIAL
-        const listaMenciones = participantes.map(p => `@${p.id.split('@')[0]}`).join(' ');
-        const mentions = participantes.map(p => p.id);
+        const listaMenciones = participantes
+          .map((p) => `@${p.id.split("@")[0]}`)
+          .join(" ");
+        const mentions = participantes.map((p) => p.id);
 
-        const drawMsg = await sock.sendMessage(jid, {
-            text: `🎲 *Iniciando Sorteo (${modo.toUpperCase()})* 🦖\n\n*Participantes:*\n${listaMenciones}\n\n_Eligiendo ganador..._` + getLegend(sock),
-            mentions: mentions
-        }, { quoted: m });
+        const drawMsg = await sock.sendMessage(
+          jid,
+          {
+            text:
+              `🎲 *Iniciando Sorteo (${modo.toUpperCase()})* 🦖\n\n*Participantes:*\n${listaMenciones}\n\n_Eligiendo ganador..._` +
+              getLegend(sock),
+            mentions: mentions,
+          },
+          { quoted: m },
+        );
 
         // Cuenta regresiva
-        for (const emoji of ["3️⃣","2️⃣","1️⃣","🎉"]) {
-          await sock.sendMessage(jid, { react: { text: emoji, key: drawMsg.key } });
-          await new Promise(res => setTimeout(res, 1000));
+        for (const emoji of ["3️⃣", "2️⃣", "1️⃣", "🎉"]) {
+          await sock.sendMessage(jid, {
+            react: { text: emoji, key: drawMsg.key },
+          });
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        const ganador = participantes[Math.floor(Math.random() * participantes.length)].id;
-        await sock.sendMessage(jid, {
-            text: `🎉 *¡FELICIDADES @${ganador.split('@')[0]}!* \n\nHas ganado el sorteo. ✨`,
-            mentions: [ganador]
-        }, { quoted: drawMsg });
-
-      } catch (e) { console.error(e); }
+        const ganador =
+          participantes[Math.floor(Math.random() * participantes.length)].id;
+        await sock.sendMessage(
+          jid,
+          {
+            text: `🎉 *¡FELICIDADES @${ganador.split("@")[0]}!* \n\nHas ganado el sorteo. ✨`,
+            mentions: [ganador],
+          },
+          { quoted: drawMsg },
+        );
+      } catch (e) {
+        console.error(e);
+      }
     },
   },
 ];
@@ -453,6 +597,3 @@ module.exports = [
 // Exportamos las funciones para que el index.js las pueda usar
 module.exports.readFriendlyList = readFriendlyList;
 module.exports.saveFriendlyList = saveFriendlyList;
-
-
-
