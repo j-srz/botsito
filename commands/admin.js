@@ -154,7 +154,7 @@ module.exports = [
       }
     },
   },
-  {
+{
     name: ".open",
     execute: async (sock, m) => {
       const jid = m.key.remoteJid;
@@ -163,9 +163,9 @@ module.exports = [
       if (!(await isAdmin(sock, jid, sender))) return;
 
       await sock.groupSettingUpdate(jid, "not_announcement");
+
       await sock.sendMessage(jid, { react: { text: "🔓", key: m.key } });
-      //const text = `_Grupo Abierto_ 🔓\n_por_ @${sender.split("@")[0]}${getLegend(sock)}`;
-      await sock.sendMessage(jid, { text, mentions: [sender] });
+
     },
   },
   {
