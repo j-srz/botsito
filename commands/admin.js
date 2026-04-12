@@ -130,7 +130,7 @@ module.exports = [
         
         // Mandamos un solo mensaje que servirá de base para las reacciones
         const sentMsg = await sock.sendMessage(jid, {
-          text: `🛡️ *Cierre programado:* El grupo se cerrará en ${timeStr}.`
+          text: `> 🛡️ *Cierre programado:* El grupo se cerrará en ${timeStr}.`
         }, { quoted: m });
 
         // Programamos las reacciones de cuenta regresiva
@@ -143,7 +143,7 @@ module.exports = [
           await sock.groupSettingUpdate(jid, "announcement");
           await sock.sendMessage(jid, { react: { text: "🔒", key: sentMsg.key } });
           await sock.sendMessage(jid, {
-            text: `_Grupo Cerrado_ 🔒\n_Tiempo cumplido: ${timeStr}_${getLegend(sock)}`
+            //text: `_Grupo Cerrado_ 🔒\n_Tiempo cumplido: ${timeStr}_${getLegend(sock)}`
           });
         }, timerMs);
 
@@ -169,7 +169,7 @@ module.exports = [
 
       await sock.groupSettingUpdate(jid, "not_announcement");
       await sock.sendMessage(jid, { react: { text: "🔓", key: m.key } });
-      const text = `_Grupo Abierto_ 🔓\n_por_ @${sender.split("@")[0]}${getLegend(sock)}`;
+      //const text = `_Grupo Abierto_ 🔓\n_por_ @${sender.split("@")[0]}${getLegend(sock)}`;
       await sock.sendMessage(jid, { text, mentions: [sender] });
     },
   },
