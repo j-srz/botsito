@@ -164,8 +164,15 @@ module.exports = [
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             const customText = body.substring(3).trim();
             const isGroup = jid.endsWith('@g.us');
+            const legend = getLegend(sock); // Guardamos la leyenda
 
-            // --- LÓGICA DE HIDETAG (Menciones) ---
+            // Función interna para evitar repetir la leyenda
+            const addLegend = (text) => {
+                if (!text) return legend;
+                return text.endsWith(legend) ? text : text + legend;
+            };
+
+            // --- LÓGICA DE HIDETAG ---
             let mentions = [];
             if (isGroup) {
                 const groupMetadata = await sock.groupMetadata(jid);
@@ -173,13 +180,12 @@ module.exports = [
             }
 
             try {
-                // --- CASO 0: NO HAY MENSAJE CITADO (Manda texto directo) ---
+                // --- CASO 0: NO HAY MENSAJE CITADO ---
                 if (!quoted) {
-                    if (!customText) {
-                        return await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
-                    }
+                    if (!customText) return await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
+                    
                     return await sock.sendMessage(jid, { 
-                        text: customText + getLegend(sock), 
+                        text: addLegend(customText), 
                         mentions 
                     }, { quoted: m });
                 }
@@ -188,40 +194,46 @@ module.exports = [
 
                 // --- CASO 1: TEXTO CITADO ---
                 if (type === 'conversation' || type === 'extendedTextMessage') {
-                    const originalText = quoted.conversation || quoted.extendedTextMessage?.text;
+                    const originalText = quoted.conversation || quoted.extendedTextMessage?.text || "";
                     return await sock.sendMessage(jid, { 
-                        text: (customText || originalText) + getLegend(sock),
+                        text: addLegend(customText || originalText),
                         mentions
                     }, { quoted: m });
                 }
 
                 // --- CASO 2: STICKERS CITADOS ---
                 if (type === 'stickerMessage') {
+                    const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
-                    // Mandamos el sticker
+                    
                     await sock.sendMessage(jid, { sticker: buffer }, { quoted: m });
-                    // Como el sticker no lleva texto, mandamos el hidetag en un mensaje invisible o con el customText si pusiste algo
+                    
                     if (customText || isGroup) {
-                        await sock.sendMessage(jid, { text: (customText || '¡Atención! 👆') + getLegend(sock), mentions }, { quoted: m });
+                        await sock.sendMessage(jid, { 
+                            text: addLegend(customText || '¡Atención! 👆'), 
+                            mentions 
+                        }, { quoted: m });
                     }
                     return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
                 }
 
-                // --- CASO 3: MULTIMEDIA CITADA (Imagen / Video) ---
+                // --- CASO 3: MULTIMEDIA CITADA ---
                 if (type === 'imageMessage' || type === 'videoMessage') {
+                    const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
-                    const typeKey = type.replace('Message', ''); // 'image' o 'video'
+                    const typeKey = type.replace('Message', ''); 
                     
+                    const finalCaption = customText || quoted[type]?.caption || "";
+
                     await sock.sendMessage(jid, { 
                         [typeKey]: buffer, 
-                        caption: (customText || quoted[type]?.caption || '') + getLegend(sock),
+                        caption: addLegend(finalCaption),
                         mentions 
                     }, { quoted: m });
                     
                     return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
                 }
 
-                // Si es un tipo no soportado
                 await sock.sendMessage(jid, { react: { text: '❓', key: m.key } });
 
             } catch (e) {
