@@ -110,14 +110,11 @@ module.exports = [
       const args = body.split(" ");
       const timeStr = args[1];
 
-      // --- CASO 1: CIERRE INMEDIATO (Sin argumentos) ---
+      // --- CASO 1: CIERRE INMEDIATO ---
       if (!timeStr) {
         await sock.groupSettingUpdate(jid, "announcement");
-        await sock.sendMessage(jid, { react: { text: "🔒", key: m.key } });
-        return await sock.sendMessage(jid, { 
-          text: `_Grupo Cerrado por_ @${sender.split("@")[0]}${getLegend(sock)}`, 
-          mentions: [sender] 
-        });
+        // Solo reacciona con el candado al comando original
+        return await sock.sendMessage(jid, { react: { text: "🔒", key: m.key } });
       }
 
       // --- CASO 2: CIERRE PROGRAMADO ---
@@ -125,34 +122,32 @@ module.exports = [
       if (timeStr.endsWith("m")) timerMs = parseInt(timeStr) * 60000;
       else if (timeStr.endsWith("s")) timerMs = parseInt(timeStr) * 1000;
 
-      if (timerMs >= 4000) { // Mínimo 4 seg para que luzca el 3, 2, 1
+      if (timerMs >= 4000) {
+        // Reacciona al comando para confirmar que recibió la orden
         await sock.sendMessage(jid, { react: { text: "⏳", key: m.key } });
         
-        // Mandamos un solo mensaje que servirá de base para las reacciones
+        // Este es el ÚNICO mensaje de texto que mandará
         const sentMsg = await sock.sendMessage(jid, {
           text: `> 🛡️ *Cierre programado:* El grupo se cerrará en ${timeStr}.`
         }, { quoted: m });
 
-        // Programamos las reacciones de cuenta regresiva
+        // Cuenta regresiva usando el mensaje de arriba
         setTimeout(() => sock.sendMessage(jid, { react: { text: "3️⃣", key: sentMsg.key } }), timerMs - 3000);
         setTimeout(() => sock.sendMessage(jid, { react: { text: "2️⃣", key: sentMsg.key } }), timerMs - 2000);
         setTimeout(() => sock.sendMessage(jid, { react: { text: "1️⃣", key: sentMsg.key } }), timerMs - 1000);
 
-        // Cierre final y candado
+        // Cierre final: Solo cambia el ajuste y reacciona
         setTimeout(async () => {
           await sock.groupSettingUpdate(jid, "announcement");
           await sock.sendMessage(jid, { react: { text: "🔒", key: sentMsg.key } });
-          await sock.sendMessage(jid, {
-            //text: `_Grupo Cerrado_ 🔒\n_Tiempo cumplido: ${timeStr}_${getLegend(sock)}`
-          });
         }, timerMs);
 
       } else if (timerMs > 0) {
-        // Si el tiempo es muy cortito (menos de 4s), cerramos directo
+        // Para tiempos muy cortos
         await sock.sendMessage(jid, { react: { text: "⏳", key: m.key } });
         setTimeout(async () => {
           await sock.groupSettingUpdate(jid, "announcement");
-          //await sock.sendMessage(jid, { text: `_Grupo Cerrado_ 🔒${getLegend(sock)}` });
+          await sock.sendMessage(jid, { react: { text: "🔒", key: m.key } });
         }, timerMs);
       } else {
         await sock.sendMessage(jid, { react: { text: "❌", key: m.key } });
