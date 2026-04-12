@@ -157,49 +157,71 @@ module.exports = [
             await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } });
         }
     },
-    {
+{
         name: '.n',
         execute: async (sock, m, body) => {
+            const jid = m.key.remoteJid;
             const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            if (!quoted) {
-                return await sock.sendMessage(m.key.remoteJid, { react: { text: '❌', key: m.key } });
+            const customText = body.substring(3).trim();
+            const isGroup = jid.endsWith('@g.us');
+
+            // --- LÓGICA DE HIDETAG (Menciones) ---
+            let mentions = [];
+            if (isGroup) {
+                const groupMetadata = await sock.groupMetadata(jid);
+                mentions = groupMetadata.participants.map(v => v.id);
             }
 
-            const jid = m.key.remoteJid;
-            const type = Object.keys(quoted)[0];
-            // Lo que escribiste después de .n
-            const customText = body.substring(3).trim(); 
-
             try {
-                // --- CASO 1: TEXTO PURO ---
-                if (type === 'conversation' || type === 'extendedTextMessage') {
-                    const originalText = quoted.conversation || quoted.extendedTextMessage?.text;
+                // --- CASO 0: NO HAY MENSAJE CITADO (Manda texto directo) ---
+                if (!quoted) {
+                    if (!customText) {
+                        return await sock.sendMessage(jid, { react: { text: '❌', key: m.key } });
+                    }
                     return await sock.sendMessage(jid, { 
-                        text: (customText || originalText) + getLegend(sock) 
+                        text: customText + getLegend(sock), 
+                        mentions 
                     }, { quoted: m });
                 }
 
-                // --- CASO 2: STICKERS ---
+                const type = Object.keys(quoted)[0];
+
+                // --- CASO 1: TEXTO CITADO ---
+                if (type === 'conversation' || type === 'extendedTextMessage') {
+                    const originalText = quoted.conversation || quoted.extendedTextMessage?.text;
+                    return await sock.sendMessage(jid, { 
+                        text: (customText || originalText) + getLegend(sock),
+                        mentions
+                    }, { quoted: m });
+                }
+
+                // --- CASO 2: STICKERS CITADOS ---
                 if (type === 'stickerMessage') {
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+                    // Mandamos el sticker
                     await sock.sendMessage(jid, { sticker: buffer }, { quoted: m });
+                    // Como el sticker no lleva texto, mandamos el hidetag en un mensaje invisible o con el customText si pusiste algo
+                    if (customText || isGroup) {
+                        await sock.sendMessage(jid, { text: (customText || '¡Atención! 👆') + getLegend(sock), mentions }, { quoted: m });
+                    }
                     return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
                 }
 
-                // --- CASO 3: MULTIMEDIA (Imagen / Video) ---
+                // --- CASO 3: MULTIMEDIA CITADA (Imagen / Video) ---
                 if (type === 'imageMessage' || type === 'videoMessage') {
                     const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
                     const typeKey = type.replace('Message', ''); // 'image' o 'video'
                     
                     await sock.sendMessage(jid, { 
                         [typeKey]: buffer, 
-                        caption: (customText || quoted[type]?.caption || '') + getLegend(sock) 
+                        caption: (customText || quoted[type]?.caption || '') + getLegend(sock),
+                        mentions 
                     }, { quoted: m });
                     
                     return await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
                 }
 
-                // Si es un tipo no soportado (ej. audio o contacto)
+                // Si es un tipo no soportado
                 await sock.sendMessage(jid, { react: { text: '❓', key: m.key } });
 
             } catch (e) {
