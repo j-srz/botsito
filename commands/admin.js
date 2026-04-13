@@ -28,12 +28,28 @@ const readFriendlyList = () => {
 };
 
 const saveFriendlyList = (data) => {
-  fs.writeFileSync(friendlyListPath, JSON.stringify(data, null, 2));
+  try {
+    const dir = path.dirname(friendlyListPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(friendlyListPath, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error("Error saving friendly list:", e);
+  }
 };
 
 // Función para guardar la lista custom
 const saveCustomList = (list) => {
-  fs.writeFileSync(customListPath, JSON.stringify(list, null, 2));
+  try {
+    const dir = path.dirname(customListPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(customListPath, JSON.stringify(list, null, 2));
+  } catch (e) {
+    console.error("Error saving custom list:", e);
+  }
 };
 
 module.exports = [
@@ -114,9 +130,9 @@ module.exports = [
       // --- CASO 1: CIERRE INMEDIATO ---
       if (!timeStr) {
         await sock.groupSettingUpdate(jid, "announcement");
-        // Solo reacciona con el candado al comando original
+        // Solo envía un mensaje con el candado
         return await sock.sendMessage(jid, {
-          react: { text: "🔒", key: m.key },
+          text: "🔒",
         });
       }
 
@@ -595,17 +611,19 @@ module.exports = [
   {
     name: ".antilink",
     execute: async (sock, m, body) => {
+      // Definimos text para que no te dé el ReferenceError
+      const text = body ? body.toLowerCase().trim() : ""; 
       const jid = m.key.remoteJid;
       const sender = m.key.participant || m.key.remoteJid;
+      
       if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
 
-      const args = body.split(" ");
-      const action = args[1]?.toLowerCase();
+      const args = text.split(" "); // Usamos text ya limpio
+      const action = args[1];
 
       const settingsPath = path.join(__dirname, "../data/group_settings.json");
       const logsPath = path.join(__dirname, "../data/antilink_logs.json");
 
-      // CASO: .antilink logs
       if (action === "logs") {
         if (!fs.existsSync(logsPath)) return await sock.sendMessage(jid, { text: "No hay registros de links aún." });
         const logs = JSON.parse(fs.readFileSync(logsPath, "utf-8")).filter(l => l.groupId === jid);
@@ -613,18 +631,26 @@ module.exports = [
         if (logs.length === 0) return await sock.sendMessage(jid, { text: "Sin actividad sospechosa en este grupo." });
 
         let res = `*📋 REGISTRO DE ANTILINK*\n\n`;
-        // Mostramos los últimos 10 para no saturar el mensaje
         logs.slice(-10).forEach((l, i) => {
-          res += `${i+1}. 👤 *${l.senderName}*\n📅 ${l.date}\n🚫 Acción: ${l.action}\n🔗 Msg: ${l.message.substring(0, 20)}...\n\n`;
+          res += `${i+1}. 👤 *${l.senderName}*\n📅 ${l.date}\n🚫 Acción: ${l.action}\n\n`;
         });
         return await sock.sendMessage(jid, { text: res + getLegend(sock) });
       }
 
-      // CASO: .antilink on/off
       if (action === "on" || action === "off") {
-        let settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, "utf-8")) : {};
-        settings[jid] = { ...settings[jid], antilink: (action === "on") };
-        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        try {
+          const dir = path.dirname(settingsPath);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          let settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, "utf-8")) : {};
+          settings[jid] = { ...settings[jid], antilink: (action === "on") };
+          
+          fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+          console.error("Error writing antilink settings:", error);
+          return await sock.sendMessage(jid, { text: "❌ Error al guardar la configuración." });
+        }
         
         await sock.sendMessage(jid, { react: { text: action === "on" ? "🛡️" : "🔓", key: m.key } });
         return await sock.sendMessage(jid, { text: `✅ Antilink ${action === "on" ? "activado (2 strikes = Ban)" : "desactivado"}.` });
