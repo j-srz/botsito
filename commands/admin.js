@@ -632,7 +632,8 @@ module.exports = [
 
         let res = `*📋 REGISTRO DE ANTILINK*\n\n`;
         logs.slice(-10).forEach((l, i) => {
-          res += `${i+1}. 👤 *${l.senderName}*\n📅 ${l.date}\n🚫 Acción: ${l.action}\n\n`;
+          const senderName = l.senderName || l.name || 'Usuario desconocido';
+          res += `${i+1}. 👤 *${senderName}*\n📅 ${l.date}\n🚫 Acción: ${l.action}\n\n`;
         });
         return await sock.sendMessage(jid, { text: res + getLegend(sock) });
       }
