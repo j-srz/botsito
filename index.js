@@ -8,7 +8,7 @@ const {
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
-const { isAdmin } = require('./utils/helpers'); 
+const { isAdmin, registrarLog } = require('./utils/helpers'); 
 const { readFriendlyList, saveFriendlyList } = require('./commands/admin');
 
 // 1. CARGA SEGURA DE GRUPOS
@@ -100,6 +100,74 @@ sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const jid = m.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
         const sender = m.key.participant || m.key.remoteJid;
+
+
+        const settingsPath = path.join(__dirname, 'data', 'group_settings.json');
+        const warningsPath = path.join(__dirname, 'data', 'antilink_warnings.json');
+        const logsPath = path.join(__dirname, 'data', 'antilink_logs.json');
+
+        if (isGroup && /https?:\/\/|chat.whatsapp.com/gi.test(body)) {
+            let settings = {};
+            if (fs.existsSync(settingsPath)) settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+            if (settings[jid]?.antilink) {
+                const authorized = await isAdmin(sock, jid, sender);
+
+                // --- DATOS PARA EL REGISTRO ---
+                const groupMetadata = await sock.groupMetadata(jid);
+                const senderName = m.pushName || "Usuario Desconocido";
+                const senderNumber = sender.split('@')[0].split(':')[0];
+                const timestamp = new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
+
+                if (authorized) {
+                    // SI ES ADMIN: Solo palomita y log de "Verificado"
+                    await sock.sendMessage(jid, { react: { text: '✅', key: m.key } });
+                    registrarLog(logsPath, { 
+                        groupId: jid, groupName: groupMetadata.subject, message: body, 
+                        name: senderName, num: senderNumber, id: sender, date: timestamp, action: "ADMIN_VERIFICADO" 
+                    });
+                } else {
+                    // SI NO ES ADMIN: Borramos y aplicamos sistema de strikes
+                    await sock.sendMessage(jid, { delete: m.key });
+
+                    let warnings = fs.existsSync(warningsPath) ? JSON.parse(fs.readFileSync(warningsPath, 'utf-8')) : {};
+                    if (!warnings[jid]) warnings[jid] = {};
+                    
+                    let userStrikes = warnings[jid][sender] || 0;
+                    userStrikes++;
+
+                    if (userStrikes >= 2) {
+                        // ACCIÓN: BAN
+                        await sock.sendMessage(jid, { 
+                            text: `🚫 *@${senderNumber}* expulsado por reincidir con enlaces.`, 
+                            mentions: [sender] 
+                        });
+                        await sock.groupParticipantsUpdate(jid, [sender], "remove");
+                        warnings[jid][sender] = 0; // Reset
+                        
+                        registrarLog(logsPath, { 
+                            groupId: jid, groupName: groupMetadata.subject, message: body, 
+                            name: senderName, num: senderNumber, id: sender, date: timestamp, action: "BAN" 
+                        });
+                    } else {
+                        // ACCIÓN: ADVERTENCIA
+                        warnings[jid][sender] = userStrikes;
+                        await sock.sendMessage(jid, { 
+                            text: `⚠️ *@${senderNumber}*, los enlaces no están permitidos.\n\n*ÚLTIMA ADVERTENCIA.* Si mandas otro, vas pa' fuera.`, 
+                            mentions: [sender] 
+                        });
+
+                        registrarLog(logsPath, { 
+                            groupId: jid, groupName: groupMetadata.subject, message: body, 
+                            name: senderName, num: senderNumber, id: sender, date: timestamp, action: "ADVERTENCIA" 
+                        });
+                    }
+                    fs.writeFileSync(warningsPath, JSON.stringify(warnings, null, 2));
+                    return; // Detenemos aquí para que no intente ejecutar el link como comando
+                }
+            }
+        }
+
 
         const cmdName = Array.from(commands.keys()).find(n => text === n || text.startsWith(n + ' '));
         if (cmdName) {

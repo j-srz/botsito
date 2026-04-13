@@ -592,6 +592,47 @@ module.exports = [
       }
     },
   },
+  {
+    name: ".antilink",
+    execute: async (sock, m, body) => {
+      const jid = m.key.remoteJid;
+      const sender = m.key.participant || m.key.remoteJid;
+      if (!jid.endsWith("@g.us") || !(await isAdmin(sock, jid, sender))) return;
+
+      const args = body.split(" ");
+      const action = args[1]?.toLowerCase();
+
+      const settingsPath = path.join(__dirname, "../data/group_settings.json");
+      const logsPath = path.join(__dirname, "../data/antilink_logs.json");
+
+      // CASO: .antilink logs
+      if (action === "logs") {
+        if (!fs.existsSync(logsPath)) return await sock.sendMessage(jid, { text: "No hay registros de links aún." });
+        const logs = JSON.parse(fs.readFileSync(logsPath, "utf-8")).filter(l => l.groupId === jid);
+        
+        if (logs.length === 0) return await sock.sendMessage(jid, { text: "Sin actividad sospechosa en este grupo." });
+
+        let res = `*📋 REGISTRO DE ANTILINK*\n\n`;
+        // Mostramos los últimos 10 para no saturar el mensaje
+        logs.slice(-10).forEach((l, i) => {
+          res += `${i+1}. 👤 *${l.senderName}*\n📅 ${l.date}\n🚫 Acción: ${l.action}\n🔗 Msg: ${l.message.substring(0, 20)}...\n\n`;
+        });
+        return await sock.sendMessage(jid, { text: res + getLegend(sock) });
+      }
+
+      // CASO: .antilink on/off
+      if (action === "on" || action === "off") {
+        let settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, "utf-8")) : {};
+        settings[jid] = { ...settings[jid], antilink: (action === "on") };
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        
+        await sock.sendMessage(jid, { react: { text: action === "on" ? "🛡️" : "🔓", key: m.key } });
+        return await sock.sendMessage(jid, { text: `✅ Antilink ${action === "on" ? "activado (2 strikes = Ban)" : "desactivado"}.` });
+      }
+
+      await sock.sendMessage(jid, { text: "⚠️ Uso: `.antilink on/off` o `.antilink logs`" });
+    },
+  },
 ];
 
 // Exportamos las funciones para que el index.js las pueda usar
