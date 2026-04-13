@@ -82,6 +82,13 @@ module.exports = [
       commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
       commandsList += "• `.id` - Obtener ID del chat para la consola.\n";
 
+
+      commandsList += "*🛡️ SEGURIDAD (ANTILINK)*\n";
+      commandsList += "• `.antilink on` - Activa escudo (2 Strikes = Ban).\n";
+      commandsList += "• `.antilink off` - Desactiva el escudo.\n";
+      commandsList += "• `.antilink logs` - Ver quién ha mandado links.\n\n";
+
+
       commandsList += "*🎟️ RULETA (RIFAS)*\n";
       commandsList += "• `.ruleta all/admin` - Sorteo rápido ✨\n";
       commandsList += "• `.ruleta add m` - 🎟️ Inscripción por reacciones.\n";
