@@ -1,0 +1,11 @@
+node_modules
+auth_info
+whatsapp-session
+database
+.env
+.git
+.gitignore
+*.log
+docker-compose.yml
+Dockerfile
+README.md

@@ -21,38 +21,37 @@ class RuletaCommand extends BaseCommand {
             const sentMsg = await sock.sendMessage(ctx.jid, {
                 text: "🦖 *¡RIFA REX ACTIVA!* 🦖\n\nReaccionen a este mensaje con cualquier emoji para entrar al sorteo.\n\n_Usa .ruleta cs para rifar entre los que se anoten._",
             });
-            await raffleService.saveFriendlyData({ messageId: sentMsg.key.id, participants: [] });
-            await sock.sendMessage(ctx.jid, { react: { text: "🎟️", key: m.key } });
+            raffleService.startFriendlyRaffle(ctx.groupState, sentMsg.key.id);
+            await ctx.react("🎟️");
             return;
         }
 
         // --- MODO CS (LISTA AMIGABLE) ---
         if (modo === "cs") {
-            let data = await raffleService.getFriendlyData();
+            const data = ctx.groupState.raffle;
             const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
             if (subModo === "add") {
-                if (mentions.length === 0) return await sock.sendMessage(ctx.jid, { text: "⚠️ Etiqueta a alguien." });
+                if (mentions.length === 0) return await ctx.reply("⚠️ Etiqueta a alguien.");
                 for (const participant of mentions) {
-                    await raffleService.addFriendlyParticipant(participant);
+                    raffleService.addFriendlyParticipant(ctx.groupState, participant);
                 }
-                return await sock.sendMessage(ctx.jid, { text: `✅ Se agregaron *${mentions.length}* a la tómbola.` });
+                return await ctx.reply(`✅ Se agregaron *${mentions.length}* a la tómbola.`);
             }
 
             if (subModo === "remove") {
-                if (mentions.length === 0) return await sock.sendMessage(ctx.jid, { text: "⚠️ Etiqueta a quién quitar." });
-                data.participants = data.participants.filter(id => !mentions.includes(id));
-                await raffleService.saveFriendlyData(data);
-                return await sock.sendMessage(ctx.jid, { text: "🗑️ Tómbola actualizada." });
+                if (mentions.length === 0) return await ctx.reply("⚠️ Etiqueta a quién quitar.");
+                raffleService.removeFriendlyParticipants(ctx.groupState, mentions);
+                return await ctx.reply("🗑️ Tómbola actualizada.");
             }
 
             if (subModo === "reset") {
-                await raffleService.saveFriendlyData({ messageId: null, participants: [] });
-                return await sock.sendMessage(ctx.jid, { text: "🧹 *Tómbola vaciada.*" });
+                raffleService.resetFriendlyRaffle(ctx.groupState);
+                return await ctx.reply("🧹 *Tómbola vaciada.*");
             }
 
             if (subModo === "show") {
-                if (data.participants.length === 0) return await sock.sendMessage(ctx.jid, { text: "La tómbola está vacía." });
+                if (data.participants.length === 0) return await ctx.reply("La tómbola está vacía.");
                 const lista = data.participants.map((id, i) => `${i + 1}. @${id.split("@")[0]}`).join("\n");
                 return await sock.sendMessage(ctx.jid, { text: `🎟️ *LISTA PARA SORTEO:*\n\n${lista}`, mentions: data.participants });
             }
@@ -60,7 +59,7 @@ class RuletaCommand extends BaseCommand {
 
         // --- EJECUCIÓN DEL SORTEO ---
         if (!["all", "admin", "cs"].includes(modo)) {
-            return await sock.sendMessage(ctx.jid, { text: "Usa: `.ruleta all`, `.ruleta admin` o `.ruleta cs`" });
+            return await ctx.reply("Usa: `.ruleta all`, `.ruleta admin` o `.ruleta cs`");
         }
 
         try {
@@ -69,7 +68,7 @@ class RuletaCommand extends BaseCommand {
             const esInmune = (pId) => cleanID(pId) === botPnBase || (botLidBase && cleanID(pId) === botLidBase);
 
             if (modo === "cs") {
-                const data = await raffleService.getFriendlyData();
+                const data = ctx.groupState.raffle;
                 participantes = groupMetadata.participants.filter(p => data.participants.includes(p.id) && !esInmune(p.id));
             } else {
                 const filtro = (p) => !esInmune(p.id);
@@ -77,7 +76,7 @@ class RuletaCommand extends BaseCommand {
                 else if (modo === "admin") participantes = groupMetadata.participants.filter(p => filtro(p) && p.admin);
             }
 
-            if (participantes.length === 0) return await sock.sendMessage(ctx.jid, { text: "❌ No hay nadie para el sorteo." });
+            if (participantes.length === 0) return await ctx.reply("❌ No hay nadie para el sorteo.");
 
             const mentions = participantes.map(p => p.id);
             const listaMenciones = participantes.map(p => `@${p.id.split("@")[0]}`).join(" ");

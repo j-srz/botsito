@@ -7,6 +7,9 @@
  * @property {string} rawBody Original text body
  * @property {boolean} isGroup True if message is from a group
  * @property {string[]} args Space-separated arguments
+ * @property {Object} groupState Group RAM state
+ * @property {Function} reply ctx.reply(text) sends msg formatted to current chat
+ * @property {Function} react ctx.react(emoji) reacts to current message
  */
 
 class BaseCommand {
@@ -17,10 +20,9 @@ class BaseCommand {
     }
 
     /**
-     * Virtual method to be implemented by child classes
      * @param {Object} sock Baileys socket instance
      * @param {Object} m Original message object
-     * @param {CommandContext} ctx Simplified context
+     * @param {CommandContext} ctx Contexto aislado robusto
      */
     async execute(sock, m, ctx) {
         throw new Error(`Command '${this.name}' has not implemented the execute method.`);

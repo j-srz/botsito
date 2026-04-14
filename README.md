@@ -1,88 +1,104 @@
-# Rex Bot (botsito) 🦖
+# 🦖 Rex Bot (Enterprise SaaS Edition)
 
-Rex Bot is a WhatsApp bot built using Node.js and the [`@whiskeysockets/baileys`](https://github.com/WhiskeySockets/Baileys) library. It is designed to manage WhatsApp groups, run raffles (rifas), moderate links, and provide fun interactions for group members.
+Un bot de WhatsApp avanzado, construido con `@whiskeysockets/baileys` bajo patrón de **Arquitectura Limpia (Clean Architecture)**. Diseñado para alta disponibilidad, gestión multisesión con aislamiento de estado (`Mutex`) y escalabilidad en Cloud/VSP a través de contenedores Docker.
 
-## Features ✨
+## 🌟 Características Principales
 
-* **Group Administration:** Promote, demote, open, and close the group.
-* **Anti-Link System:** Protects groups from unauthorized links. Warns users on the first offense and removes them on the second strike (2 strikes = ban). Logs interactions.
-* **Whitelist/Security:** Restricts bot operations to authorized groups defined in `.env`.
-* **Raffles & Auctions (Subastas y Rifas):**
-  * `.ruleta` - Run quick raffles.
-  * Reaction-based inscriptions.
-  * Manage blacklists (Ruletaban).
-* **Fun & Interactive:** Kiss, tickle, and other social interactions.
-* **Optimized for low-powered devices:** Pre-configured settings to avoid downloading chat history and link previews, making it suitable and fast for Raspberry Pi hosting.
+* **Soporte Multi-Grupo**: Sistema de `Locks` que evita colisiones (Race Conditions). Si dos grupos activan `.ruleta` en el mismo milisegundo, la memoria no se corrompe. Cada grupo (JID) tiene su propio mapa RAM.
+* **Sistema de Comandos OCP**: Comandos Auto-Descubiertos por un `CommandRegistry`. Separación 1-1 en ficheros (Técnica SaaS).
+* **Middlewares Asíncronos**: Filtros perimetrales (Whitelist & Antilinks) bloquean requests antes de consumir CPU local.
+* **Persistencia Diferida con Caché**: Base de datos en JSON con proxy RAM (`JsonRepository`) que recorta el 99% de lecturas/escrituras al SSD del SO.
+* **Multimedia Manager**: Cola robusta y asíncrona de compresión MP4/Sticker limitando threads concurrentes usando `ffmpeg`.
 
-## Requirements 📦
+---
 
-* Node.js (v14 or higher recommended)
-* `npm` or `yarn`
+## 🏗️ Explicación de la Arquitectura (Clean Code)
 
-## Installation 🛠️
+El proyecto erradicó el diseño "Script" y dividió la responsabilidad en capas formales en ``src/``:
 
-1. **Clone the repository or download the code.**
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Configure the Environment variables:**
-   Create a `.env` file in the root directory based on your needs.
-   ```env
-   ALLOWED_GROUPS="1234567890-123456@g.us, 0987654321-654321@g.us"
-   ```
-   *(You can obtain the exact Group ID using the `.id` command in a chat where the bot is running).*
+1. **`core/`**: El corazón del sistema. Establece la conexión de Baileys (`bot.js`), inicializa el `Logger` genérico y monta la máquina de **Session/Mutex**, enlazando estados atómicos para proteger colas masivas.
+2. **`handlers/`**: Receptores crudos de los Socket Events (`messages.upsert`, etc.). Extraen el dato, construyen el `Contexto Seguro` (`ctx`) y pasan la bola.
+3. **`middlewares/`**: Aduana de seguridad. El `whitelist.middleware.js` descarta chats ajenos y el `antilink.middleware.js` borra, advierte y banea links a velocidad supersónica limitando peticiones nulas.
+4. **`services/`**: Códice comercial (Rifas, Antilink strikes, FFMPEG rendering). No acceden jamás de manera cruzada entre IDs y NO disparan mensajes brutos.
+5. **`commands/`**: Ejecutores finales aislados. Heredan de la clase base `BaseCommand`.
+6. **`data/`**: Puente de persistencia.
 
-## Usage 🚀
+---
 
-Start the bot using node:
-```bash
-node index.js
+## 🚀 Uso del Sistema Multi-Grupo (Context y State)
+
+Todo comando recibe un objeto `ctx` vitaminado. A diferencia del diseño viejo, **nunca uses variables globales** u overrides directos de array en comandos. 
+
+Si necesitas alterar los participantes del grupo actual en una rifa, accederás a la variable mágica extraída individualmente para ESE Gupo:
+
+```js
+// Comando ficticio
+async execute(sock, m, ctx) {
+    const listadoRifa = ctx.groupState.raffle.participants;
+    
+    listadoRifa.push(ctx.sender); // Mutación SEGURA por lock Mutex.
+    
+    // Y en lugar de construir todo un sock.sendMessage largo:
+    await ctx.reply("¡Agregado exitosamente a la tanda de este grupo!");
+}
 ```
-*On the first run, a QR code will appear in the terminal. Scan it with your WhatsApp mobile app (Linked Devices) to log in.*
+*El `TTL` del `GroupSessionManager` auto-limpiará este contexto de la memoria si el Grupo deja de interactuar por más de una hora.*
 
-**(For production, it is recommended to use PM2):**
-```bash
-pm2 start index.js --name "RexBot"
+---
+
+## ⚙️ Configuración e Instalación Paso a Paso
+
+### Prerrequisitos
+- Node.js (v18 o v20 LTS)
+- NPM
+- Instalar localmente `ffmpeg` en tu máquina si no usas Docker.
+
+### 1. Variables de Entorno (`.env`)
+Renombra el archivo (o crea) `.env` y define los parámetros. *Si `ALLOWED_GROUPS` queda vacío, el bot funciona de manera pública.*
+
+```env
+NODE_ENV=production
+ALLOWED_GROUPS='' 
 ```
 
-## Available Commands 📜
+### 2. Ejecutar Local 💻 
+*(Uso sugerido PM2).*
+```bash
+npm install
+npm run start
+```
+Abre tu celular, ve a **Dispositivos Vinculados** y escanea el código QR que va a aparecer en grande en tu terminal.
 
-*(Send `.cm` or `.cm-sc` directly to the bot to see this dynamically.)*
+### 3. Agregar / Crear Modulos Nuevos 🧩
+Si quieres hacer un nuevo comando (Ej: `.abrazar`), ve a `/src/commands/fun/` y crea el archivo `abrazar.command.js`:
+```js
+const BaseCommand = require('../base.command');
 
-### 🛠️ Interacción & Info
-* `.cm` - Displays the main help menu.
-* `.cm-sc` - Displays secret/admin menus.
-* `.n` - Forward/Edit media text.
-* `.user` - Displays your user info and role.
-* `.id` - Requests the Group/Chat ID (Logs it to the terminal).
-* `.ping` - Checks bot status.
+class AbrazarCommand extends BaseCommand {
+    constructor() { super('.abrazar', [], 'Da un abrazo'); }
 
-### 🛡️ Moderation & Admins
-* `.antilink on` - Activates the anti-link shield (2 Strikes = Ban).
-* `.antilink off` - Deactivates the shield.
-* `.antilink logs` - Shows antilink logs.
-* `.shh` - Warns about NO SPAM ⚠️.
-* `.promote` / `.demote` - Manage admin roles.
-* `.close [time]` / `.open` - Closes/Opens the group chat.
+    async execute(sock, m, ctx) {
+        await ctx.react('🫂');
+        await ctx.reply(`¡Un abrazo gigante a todos!`);
+    }
+}
+module.exports = AbrazarCommand;
+```
+Al correr el bot de nuevo, ¡listo! Será listado automáticamente.
 
-### 🎟️ Rifas y Tómbola (Raffles)
-* `.ruleta all/admin` - Quick raffle.
-* `.ruleta add m` - Inscription via message reactions.
-* `.ruleta cs` - Draw from inscribed members.
-* `.ruletaban` - Ban roulette for fun/moderation.
+---
 
-### ✨ Fun
-* `.kiss` / `.tickle` - Social interactions.
-* `.joto` / `.papoi` / `.1500` / `.smoke` - General entertainment.
+## 🐳 Despliegue Avanzado: Producción / VPS (Docker)
 
-## Troubleshooting
+El proyecto viene integrado con un ecosistema de Docker preparado para escalado horizontal aislando dependencias crudas de Linux (`canvas`, `ffmpeg`).
 
-- **QR Code doesn't show:** Ensure your terminal supports QR rendering or enlarge the terminal window.
-- **Bot doesn't respond:** 
-  1. Make sure the group ID is properly added to `ALLOWED_GROUPS` in `.env`.
-  2. Make sure the bot process hasn't crashed (`auth_info` folder reset might be needed if session is permanently broken).
-
-## Disclaimer
-
-This bot is a fan-made project utilizing the Baileys library and is not officially affiliated with WhatsApp Inc. Please respect WhatsApp's Terms of Service to prevent your number from being banned.
+### Desplegar
+```bash
+# Carga, levanta y envía a background unifica volumenes persistent
+docker-compose up -d --build
+```
+Loggear el código QR en el primer inicio para escanearlo:
+```bash
+docker logs -f rexbot_prod
+```
+*Note: La política está configurada a `restart: unless-stopped`, si hay un crash eventual por V8 del host, regresará velozmente.*

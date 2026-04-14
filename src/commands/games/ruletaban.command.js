@@ -21,34 +21,34 @@ class RuletabanCommand extends BaseCommand {
         if (modo === "cs") {
             const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
             if (subModo === "add") {
-                if (mentions.length === 0) return await sock.sendMessage(ctx.jid, { text: "⚠️ Menciona a los pendejos para el registro." });
-                const { agregados, total } = await raffleService.addCustomParticipants(mentions);
-                await sock.sendMessage(ctx.jid, { react: { text: "📝", key: m.key } });
-                return await sock.sendMessage(ctx.jid, { text: `✅ *${agregados}* agregados. Total en lista: ${total}` });
+                if (mentions.length === 0) return await ctx.reply("⚠️ Menciona a los pendejos para el registro.");
+                const { agregados, total } = raffleService.addCustomParticipants(ctx.groupState, mentions);
+                await ctx.react("📝");
+                return await ctx.reply(`✅ *${agregados}* agregados. Total en lista: ${total}`);
             }
             if (subModo === "remove") {
-                if (mentions.length === 0) return await sock.sendMessage(ctx.jid, { text: "⚠️ Menciona a quiénes quieres perdonar." });
-                const borrados = await raffleService.removeCustomParticipants(mentions);
-                await sock.sendMessage(ctx.jid, { react: { text: "🚮", key: m.key } });
-                return await sock.sendMessage(ctx.jid, { text: `🗑️ Se eliminaron *${borrados}* de la lista negra.` });
+                if (mentions.length === 0) return await ctx.reply("⚠️ Menciona a quiénes quieres perdonar.");
+                const borrados = raffleService.removeCustomParticipants(ctx.groupState, mentions);
+                await ctx.react("🚮");
+                return await ctx.reply(`🗑️ Se eliminaron *${borrados}* de la lista negra.`);
             }
             if (subModo === "show" || subModo === "showlist") {
-                const currentList = await raffleService.getCustomList();
-                if (currentList.length === 0) return await sock.sendMessage(ctx.jid, { text: "La lista está limpia... por ahora. 🦖" });
+                const currentList = ctx.groupState.customRaffle;
+                if (currentList.length === 0) return await ctx.reply("La lista está limpia... por ahora. 🦖");
                 const listaTexto = currentList.map((id, i) => `${i + 1}. @${id.split("@")[0]}`).join("\n");
                 return await sock.sendMessage(ctx.jid, { text: `💀 *LISTA NEGRA (cs):*\n\n${listaTexto}`, mentions: currentList });
             }
             if (subModo === "reset") {
-                await raffleService.resetCustomList();
-                await sock.sendMessage(ctx.jid, { react: { text: "🧹", key: m.key } });
-                return await sock.sendMessage(ctx.jid, { text: "🧹 *Lista reseteada. Todos son inocentes de nuevo.*" });
+                raffleService.resetCustomList(ctx.groupState);
+                await ctx.react("🧹");
+                return await ctx.reply("🧹 *Lista reseteada. Todos son inocentes de nuevo.*");
             }
         }
 
         if (!["all", "admin", "cs"].includes(modo)) {
-            await sock.sendMessage(ctx.jid, { react: { text: "❌", key: m.key } });
+            await ctx.react("❌");
             const helpMsg = `┌── [ 🎲 RULETA REX ] ──┐\n• \`.ruletaban all [soyjoto]\`\n• \`.ruletaban admin [soyjoto]\`\n\n*MODO CS (CUSTOM):*\n• \`.ruletaban cs\` (Sorteo)\n• \`.ruletaban cs add @user1 @user2...\`\n• \`.ruletaban cs remove @user1...\`\n• \`.ruletaban cs show\`\n• \`.ruletaban cs reset\`\n└────────────────────┘`;
-            return await sock.sendMessage(ctx.jid, { text: helpMsg }, { quoted: m });
+            return await ctx.reply(helpMsg);
         }
 
         try {
@@ -58,7 +58,7 @@ class RuletabanCommand extends BaseCommand {
             const esInmune = (pId) => cleanID(pId) === botPnBase || (botLidBase && cleanID(pId) === botLidBase);
 
             if (modo === "cs") {
-                const customList = await raffleService.getCustomList();
+                const customList = ctx.groupState.customRaffle;
                 participantes = groupMetadata.participants.filter(p => customList.includes(p.id) && !esInmune(p.id));
             } else {
                 const filtroGral = (p) => {
@@ -72,7 +72,7 @@ class RuletabanCommand extends BaseCommand {
                 else if (modo === "admin") participantes = groupMetadata.participants.filter(p => filtroGral(p) && (p.admin === "admin" || p.admin === "superadmin"));
             }
 
-            if (participantes.length === 0) return await sock.sendMessage(ctx.jid, { text: `❌ No hay nadie en la mira (${modo}).` });
+            if (participantes.length === 0) return await ctx.reply(`❌ No hay nadie en la mira (${modo}).`);
 
             const mentions = participantes.map(p => p.id);
             const listaMenciones = participantes.map(p => `@${p.id.split("@")[0]}`).join(" ");

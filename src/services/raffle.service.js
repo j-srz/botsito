@@ -1,59 +1,56 @@
-const db = require('../data/db');
-
+/**
+ * Manejador de la lógica pura de la Ruleta delegada por el Mutex,
+ * ya no accede al JSON genérico usando DB sino que mutará su propio estado de argumento aislado.
+ */
 class RaffleService {
     
     // --- FRIENDLY LIST (Por Reacciones) ---
-    async getFriendlyData() {
-        return await db.ruletaFriendly.read();
-    }
-
-    async saveFriendlyData(data) {
-        await db.ruletaFriendly.write(data);
-    }
-
-    async addFriendlyParticipant(participant) {
-        const data = await this.getFriendlyData();
-        if (!data.participants.includes(participant)) {
-            data.participants.push(participant);
-            await this.saveFriendlyData(data);
+    /**
+     * @param {Object} groupState Context state dictionary for a specific group
+     */
+    addFriendlyParticipant(groupState, participant) {
+        if (!groupState.raffle.participants.includes(participant)) {
+            groupState.raffle.participants.push(participant);
             return true;
         }
         return false;
     }
 
+    startFriendlyRaffle(groupState, messageId) {
+        groupState.raffle.messageId = messageId;
+        groupState.raffle.participants = [];
+    }
+
+    removeFriendlyParticipants(groupState, participants) {
+        groupState.raffle.participants = groupState.raffle.participants.filter(id => !participants.includes(id));
+    }
+
+    resetFriendlyRaffle(groupState) {
+        groupState.raffle.messageId = null;
+        groupState.raffle.participants = [];
+    }
+
+
     // --- CUSTOM LIST (Ruletaban CS) ---
-    async getCustomList() {
-        return await db.ruletaCustom.read();
-    }
-
-    async saveCustomList(list) {
-        await db.ruletaCustom.write(list);
-    }
-
-    async addCustomParticipants(participants) {
-        let currentList = await this.getCustomList();
+    addCustomParticipants(groupState, participants) {
         let agregados = 0;
         participants.forEach(id => {
-            if (!currentList.includes(id)) {
-                currentList.push(id);
+            if (!groupState.customRaffle.includes(id)) {
+                groupState.customRaffle.push(id);
                 agregados++;
             }
         });
-        await this.saveCustomList(currentList);
-        return { agregados, total: currentList.length };
+        return { agregados, total: groupState.customRaffle.length };
     }
 
-    async removeCustomParticipants(participants) {
-        let currentList = await this.getCustomList();
-        const inicial = currentList.length;
-        currentList = currentList.filter(id => !participants.includes(id));
-        const borrados = inicial - currentList.length;
-        await this.saveCustomList(currentList);
-        return borrados;
+    removeCustomParticipants(groupState, participants) {
+        const inicial = groupState.customRaffle.length;
+        groupState.customRaffle = groupState.customRaffle.filter(id => !participants.includes(id));
+        return inicial - groupState.customRaffle.length;
     }
 
-    async resetCustomList() {
-        await this.saveCustomList([]);
+    resetCustomList(groupState) {
+        groupState.customRaffle = [];
     }
 }
 

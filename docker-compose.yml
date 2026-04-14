@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  rexbot:
+    build: .
+    container_name: rexbot_prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persistir las credenciales de WhatsApp
+      - ./auth_info:/app/auth_info
+      # Persistir base de datos (repositorios cacheados)
+      - ./database:/app/database
+      # Sincronización de medios 
+      - ./media:/app/media
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
