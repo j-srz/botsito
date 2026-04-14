@@ -57,6 +57,8 @@ class MessageHandler {
         const remoteResult = await require('../middlewares/remote.middleware').handle(sock, m, ctx);
         if (remoteResult && remoteResult.intercepted) {
              if (!remoteResult.allowed) return;
+             // Si el Middleware creó un entorno Proxy a prueba de crashes E2E (Quoted Error Preventer)
+             if (remoteResult.spoofedSock) sock = remoteResult.spoofedSock; 
         }
 
         // Security Middlewares

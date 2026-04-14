@@ -11,6 +11,7 @@ const db = {
     ruletaFriendly: new JsonRepository(path.join(dataDir, 'ruleta_friendly.json'), { messageId: null, participants: [] }),
     subastas: new JsonRepository(path.join(dataDir, 'subastas_registro.json'), []),
     groupsDirectory: new JsonRepository(path.join(dataDir, 'groups_directory.json'), {}),
+    remoteSessions: new JsonRepository(path.join(dataDir, 'remote_sessions.json'), {}),
 };
 
 module.exports = db;

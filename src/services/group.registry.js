@@ -75,7 +75,7 @@ class GroupRegistry {
         // 3er pase: Nombre parcial del grupo (Fallback de conveniencia)
         // Buscamos cuál hace match primero
         for (const [jid, data] of Object.entries(root)) {
-            if (data.name && data.name.toLowerCase().includes(q)) return jid;
+            if (data.name && data.name.toLowerCase() === q) return jid;
         }
 
         return null;
@@ -86,19 +86,29 @@ class GroupRegistry {
     }
 
     async addAlias(jid, alias) {
+        // [AUDIT FIX]: Validación GLOBAL de colisión cruzada
+        const currentCheck = await this.resolveIdentifier(alias);
+        if (currentCheck && currentCheck !== jid) return false;
+
         const record = await this.getGroupRecord(jid);
         if (!record.aliases.includes(alias)) {
             record.aliases.push(alias);
             await this.updateGroupRecord(jid, { aliases: record.aliases });
         }
+        return true;
     }
 
     async addTag(jid, tag) {
+        // [AUDIT FIX]: Validación GLOBAL de colisión cruzada
+        const currentCheck = await this.resolveIdentifier(tag);
+        if (currentCheck && currentCheck !== jid) return false;
+
         const record = await this.getGroupRecord(jid);
         if (!record.tags.includes(tag)) {
             record.tags.push(tag);
             await this.updateGroupRecord(jid, { tags: record.tags });
         }
+        return true;
     }
 }
 

@@ -36,7 +36,9 @@ class CmScCommand extends BaseCommand {
         commandsList += "• `.operators add/remove @user` - Otorga/Quita permisos de operador.\n";
         commandsList += "• `.operators get/reset` - Ver/Limpiar lista de sub-operadores.\n";
         commandsList += "_Mando desde el PRIVADO:_\n";
-        commandsList += "• `.remote <alias/tag/jid> <comando>` - Ejecución suplantada PRO.\n\n";
+        commandsList += "• `.remote <alias/tag/jid> <comando>` - Ejecución suplantada de un uso.\n";
+        commandsList += "• `.remote bind <alias>` - Anclaje persistente de sesión remote.\n";
+        commandsList += "• `.remote unbind` - Salir de sesión remote.\n\n";
 
         commandsList += "*🗂️ DIRECTORIO DE GRUPOS*\n";
         commandsList += "• `.group list` - Lista de grupos indizados.\n";

@@ -39,7 +39,9 @@ class GroupCommand extends BaseCommand {
             if (!value) return await ctx.reply("Uso: `.group setalias <nombre_alianza>` (sin espacios)");
             if (rootRecord.aliases.includes(value)) return await ctx.reply("⚠️ Ese alias ya está en este grupo.");
             
-            await groupRegistry.addAlias(ctx.jid, value);
+            const success = await groupRegistry.addAlias(ctx.jid, value);
+            if (!success) return await ctx.reply("❌ Error Global: Ese alias ya fue reclamado por otro grupo en el ecosistema.");
+
             return await ctx.reply(`🔖 *Alias asignado permanentemente:* \`${value}\``);
         }
 
@@ -47,7 +49,9 @@ class GroupCommand extends BaseCommand {
             if (!value) return await ctx.reply("Uso: `.group addtag <etiqueta>` (ej: sop)");
             if (rootRecord.tags.includes(value)) return await ctx.reply("⚠️ Ese tag ya existe.");
 
-            await groupRegistry.addTag(ctx.jid, value);
+            const success = await groupRegistry.addTag(ctx.jid, value);
+            if (!success) return await ctx.reply("❌ Error Global: Ese identificador corto ya ha sido reclamado.");
+
             return await ctx.reply(`🏷️ *Tag agregado permanentemente:* \`${value}\``);
         }
 
