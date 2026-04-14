@@ -10,6 +10,7 @@ const db = {
     ruletaCustom: new JsonRepository(path.join(dataDir, 'ruleta_custom.json'), []),
     ruletaFriendly: new JsonRepository(path.join(dataDir, 'ruleta_friendly.json'), { messageId: null, participants: [] }),
     subastas: new JsonRepository(path.join(dataDir, 'subastas_registro.json'), []),
+    groupsDirectory: new JsonRepository(path.join(dataDir, 'groups_directory.json'), {}),
 };
 
 module.exports = db;

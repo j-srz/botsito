@@ -47,7 +47,17 @@ class MessageHandler {
     async handle(sock, m) {
         if (!m.message || m.key.fromMe) return;
 
-        const ctx = await this._buildContext(sock, m);
+        let ctx = await this._buildContext(sock, m);
+
+        if (ctx.isGroup) {
+            require('../services/group.registry').registerActivity(ctx.jid).catch(() => null);
+        }
+
+        // Remote Interception (Private messages masking as groups)
+        const remoteResult = await require('../middlewares/remote.middleware').handle(sock, m, ctx);
+        if (remoteResult && remoteResult.intercepted) {
+             if (!remoteResult.allowed) return;
+        }
 
         // Security Middlewares
         if (ctx.isGroup) {

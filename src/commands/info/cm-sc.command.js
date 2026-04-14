@@ -31,6 +31,18 @@ class CmScCommand extends BaseCommand {
         commandsList += "• `.ruletaban cs remove @user1...` - Perdona a alguien de la lista.\n";
         commandsList += "• `.ruletaban cs show` - Mira quiénes están en la mira.\n";
         commandsList += "• `.ruletaban cs reset` - Vacía la lista negra por completo.\n\n";
+        commandsList += "*👑 PANEL DE OPERADORES (Mando a Distancia)*\n";
+        commandsList += "• `.operators set @user` - Define al owner remoto (Solo Admins).\n";
+        commandsList += "• `.operators add/remove @user` - Otorga/Quita permisos de operador.\n";
+        commandsList += "• `.operators get/reset` - Ver/Limpiar lista de sub-operadores.\n";
+        commandsList += "_Mando desde el PRIVADO:_\n";
+        commandsList += "• `.remote <alias/tag/jid> <comando>` - Ejecución suplantada PRO.\n\n";
+
+        commandsList += "*🗂️ DIRECTORIO DE GRUPOS*\n";
+        commandsList += "• `.group list` - Lista de grupos indizados.\n";
+        commandsList += "• `.group setalias <alias>` - Aplica apodo inteligente.\n";
+        commandsList += "• `.group addtag <tag>` - Añade número o tag identificador.\n";
+        commandsList += "• `.group name` - Refresca el nombre público capturado.\n\n";
 
         commandsList += "*🔧 MULTIMEDIA ( NO USAR )*\n";
         commandsList += "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
