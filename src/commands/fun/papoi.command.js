@@ -9,7 +9,7 @@ class PapoiCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        const imgPath = path.resolve(__dirname, "../../../../media/papoi.jpg");
+        const imgPath = path.resolve(__dirname, "../../../media/papoi.jpg");
 
         if (!fs.existsSync(imgPath)) {
             return await sock.sendMessage(ctx.jid, { 

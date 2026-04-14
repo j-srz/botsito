@@ -15,7 +15,7 @@ class KissCommand extends BaseCommand {
 
         const targetJid = quotedInfo.participant;
         const targetNumber = targetJid.split("@")[0].split(":")[0];
-        const videoPath = path.join(__dirname, "../../../../media/kiss.mp4");
+        const videoPath = path.join(__dirname, "../../../media/kiss.mp4");
 
         try {
             await sock.sendMessage(ctx.jid, {

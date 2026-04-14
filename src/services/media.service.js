@@ -31,8 +31,8 @@ class MediaService {
         const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
         if (type === 'videoMessage') {
-            const tempIn = path.resolve(__dirname, `../../../media/s_in_${Date.now()}.mp4`);
-            const tempOut = path.resolve(__dirname, `../../../media/s_out_${Date.now()}.webp`);
+            const tempIn = path.resolve(__dirname, `../../media/s_in_${Date.now()}.mp4`);
+            const tempOut = path.resolve(__dirname, `../../media/s_out_${Date.now()}.webp`);
             
             // Ensure dir exists
             const dir = path.dirname(tempIn);
@@ -70,8 +70,8 @@ class MediaService {
         const buffer = await downloadMediaMessage({ message: mediaData }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
 
         if (isAnimated) {
-            const tempGif = path.resolve(__dirname, `../../../media/temp_${Date.now()}.gif`);
-            const tempMp4 = path.resolve(__dirname, `../../../media/temp_${Date.now()}.mp4`);
+            const tempGif = path.resolve(__dirname, `../../media/temp_${Date.now()}.gif`);
+            const tempMp4 = path.resolve(__dirname, `../../media/temp_${Date.now()}.mp4`);
             
             const dir = path.dirname(tempGif);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

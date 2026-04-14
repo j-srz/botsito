@@ -9,7 +9,7 @@ class MilquinientosCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        const videoPath = path.resolve(__dirname, "../../../../media/milquinientos.mp4");
+        const videoPath = path.resolve(__dirname, "../../../media/milquinientos.mp4");
         const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
         
         if (!quotedInfo || !quotedInfo.participant)
