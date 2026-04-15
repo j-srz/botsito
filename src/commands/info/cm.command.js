@@ -21,8 +21,8 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.smoke` - 🚬\n";
         commandsList += "• `.wassaa` - Wassssaaa\n";
         commandsList += "• `.vtalv` - Mandas un saludo a alguien.\n";
-        commandsList += "• `.kiss` - Manda un beso a alguien.\n\n";
-        commandsList += "• `.kiss` - Quien fue la ultima persona que te deso.\n\n";
+        commandsList += "• `.kiss` - Manda un beso a alguien.\n";
+        commandsList += "• `.mylastkiss` - Quien fue la ultima persona que te deso.\n\n";
 
         commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
         commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
