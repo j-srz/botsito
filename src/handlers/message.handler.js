@@ -100,6 +100,15 @@ class MessageHandler {
         // Command matching
         const command = this.registry.findCommand(ctx.text);
         if (command) {
+            // Interceptor de comandos desactivados (per-group)
+            if (ctx.isGroup) {
+                const commandControlService = require('../services/command-control.service');
+                const cmdName = command.name.replace(/^\./, '');
+                if (await commandControlService.isDisabled(ctx.jid, cmdName)) {
+                    return await ctx.reply('📴 Este comando está desactivado en este grupo.');
+                }
+            }
+
             logger.info(`📩 Comando detectado: ${command.name} | Chat: ${ctx.jid}`);
             try {
                 await command.execute(sock, m, ctx);

@@ -13,6 +13,7 @@ const db = {
     messageLogs: new JsonRepository(path.join(dataDir, 'message_logs.json'), {}),
     pinnedMessages: new JsonRepository(path.join(dataDir, 'pinned_messages.json'), {}),
     kissData: new JsonRepository(path.join(dataDir, 'kissData.json'), {}),
+    disabledCommands: new JsonRepository(path.join(dataDir, 'disabled_commands.json'), {}),
 };
 
 module.exports = db;

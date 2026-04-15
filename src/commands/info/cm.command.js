@@ -49,7 +49,10 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.restablecerlink` - 🔄 Revocar y generar nuevo link.\n";
         commandsList += "• `.close [tiempo]` - Cerrar el grupo (ej: .close 1m).\n";
         commandsList += "• `.open` - Abrir el grupo (Todos).\n";
-        commandsList += "• `.resumen` - Ranking de subastas.";
+        commandsList += "• `.resumen` - Ranking de subastas.\n";
+        commandsList += "• `.disable <cmd>` - 📴 Desactivar un comando.\n";
+        commandsList += "• `.enable <cmd>` - ✅ Reactivar un comando.\n";
+        commandsList += "• `.disabled` - 📋 Ver comandos desactivados.";
 
         await sock.sendMessage(ctx.jid, { text: commandsList + getLegend(sock) }, { quoted: m });
     }
