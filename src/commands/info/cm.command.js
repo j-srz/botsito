@@ -45,11 +45,6 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.del` - 🗑️ Eliminar mensaje citado.\n";
         commandsList += "• `.notify <msg>` - 📢 Aviso mencionando a todos.\n";
         commandsList += "• `.hidetag <msg>` - 🕶️ Mención invisible a todos.\n";
-        commandsList += "• `.mute @user` - 🔇 Silenciar usuario.\n";
-        commandsList += "• `.unmute @user` - 🔊 Dessilenciar usuario.\n";
-        commandsList += "• `.muteall` - 🔇 Solo admins hablan.\n";
-        commandsList += "• `.unmuteall` - 🔊 Todos pueden hablar.\n";
-        commandsList += "• `.tachuela` - 📌 Fijar mensaje citado.\n";
         commandsList += "• `.fantasmas` - 👻 Detectar inactivos.\n";
         commandsList += "• `.restablecerlink` - 🔄 Revocar y generar nuevo link.\n";
         commandsList += "• `.close [tiempo]` - Cerrar el grupo (ej: .close 1m).\n";

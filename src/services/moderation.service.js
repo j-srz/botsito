@@ -3,62 +3,9 @@ const logger = require('../core/logger');
 
 /**
  * Servicio centralizado de moderación.
- * Gestiona mutes, logs de mensajes y mensajes fijados con persistencia JSON.
+ * Gestiona logs de mensajes y mensajes fijados con persistencia JSON.
  */
 class ModerationService {
-
-    // ─── MUTE ────────────────────────────────────────────
-
-    async isMuted(groupJid, userJid) {
-        try {
-            const data = await db.mutedUsers.read();
-            const list = data[groupJid];
-            return Array.isArray(list) && list.includes(userJid);
-        } catch (e) {
-            logger.error('ModerationService.isMuted error:', e);
-            return false;
-        }
-    }
-
-    async muteUser(groupJid, userJid) {
-        try {
-            const data = await db.mutedUsers.read();
-            if (!data[groupJid]) data[groupJid] = [];
-            if (!data[groupJid].includes(userJid)) {
-                data[groupJid].push(userJid);
-                await db.mutedUsers.write(data);
-            }
-            return true;
-        } catch (e) {
-            logger.error('ModerationService.muteUser error:', e);
-            return false;
-        }
-    }
-
-    async unmuteUser(groupJid, userJid) {
-        try {
-            const data = await db.mutedUsers.read();
-            if (!data[groupJid]) return false;
-            const idx = data[groupJid].indexOf(userJid);
-            if (idx === -1) return false;
-            data[groupJid].splice(idx, 1);
-            await db.mutedUsers.write(data);
-            return true;
-        } catch (e) {
-            logger.error('ModerationService.unmuteUser error:', e);
-            return false;
-        }
-    }
-
-    async getMutedUsers(groupJid) {
-        try {
-            const data = await db.mutedUsers.read();
-            return data[groupJid] || [];
-        } catch (e) {
-            logger.error('ModerationService.getMutedUsers error:', e);
-            return [];
-        }
-    }
 
     // ─── MESSAGE LOGS ────────────────────────────────────
 

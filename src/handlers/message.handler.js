@@ -2,7 +2,6 @@ const logger = require('../core/logger');
 const CommandRegistry = require('../commands/command.registry');
 const whitelistMiddleware = require('../middlewares/whitelist.middleware');
 const antilinkMiddleware = require('../middlewares/antilink.middleware');
-const muteMiddleware = require('../middlewares/mute.middleware');
 const moderationService = require('../services/moderation.service');
 const groupService = require('../services/group.service');
 const sessionManager = require('../core/session/group.session.manager');
@@ -83,9 +82,6 @@ class MessageHandler {
             }
         }
 
-        // Mute interceptor — elimina mensajes de usuarios silenciados
-        const isUnmuted = await muteMiddleware.handle(sock, m, ctx);
-        if (!isUnmuted) return;
 
         // Message logging — alimenta .totalchat, .fantasmas, .listonline
         if (ctx.isGroup) {
