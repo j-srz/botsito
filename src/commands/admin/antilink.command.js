@@ -1,6 +1,5 @@
 const BaseCommand = require('../base.command');
 const antilinkService = require('../../services/antilink.service');
-const groupService = require('../../services/group.service');
 const { getLegend } = require('../../utils/formatter');
 
 class AntilinkCommand extends BaseCommand {
@@ -9,7 +8,7 @@ class AntilinkCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup || !(await groupService.isAdmin(sock, ctx.jid, ctx.sender))) return;
+        this.requireAdmin(ctx);
 
         const action = ctx.args[1];
 

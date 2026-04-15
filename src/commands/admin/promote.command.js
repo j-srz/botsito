@@ -1,5 +1,4 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 
 class PromoteCommand extends BaseCommand {
     constructor() {
@@ -7,10 +6,10 @@ class PromoteCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
-        const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+        this.requireAdmin(ctx);
 
-        if (quotedInfo && quotedInfo.quotedMessage && (await groupService.isAdmin(sock, ctx.jid, ctx.sender))) {
+        const quotedInfo = this.getQuotedInfo(m);
+        if (quotedInfo && quotedInfo.quotedMessage) {
             const target = quotedInfo.participant;
             await sock.groupParticipantsUpdate(ctx.jid, [target], "promote");
             await sock.sendMessage(ctx.jid, { react: { text: "🆙", key: m.key } });

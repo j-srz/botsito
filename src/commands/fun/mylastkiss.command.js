@@ -1,19 +1,17 @@
 'use strict';
 
 const BaseCommand = require('../base.command');
-const { loadKissData, cleanJid } = require('./kiss.command');
+const db = require('../../data/db');
+const { cleanID } = require('../../utils/formatter');
 
-// ---------------------------------------------------------------------------
-// Comando .mylastkiss
-// ---------------------------------------------------------------------------
 class MyLastKissCommand extends BaseCommand {
     constructor() {
         super('.mylastkiss', [], 'Muestra quién fue la última persona que te besó.');
     }
 
     async execute(sock, m, ctx) {
-        const myNumber = cleanJid(ctx.sender);
-        const data     = loadKissData();
+        const myNumber = cleanID(ctx.sender);
+        const data     = await db.kissData.read();
         const record   = data[myNumber];
 
         if (!record || record.history.length === 0) {

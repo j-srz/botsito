@@ -1,6 +1,5 @@
 const BaseCommand = require('../base.command');
 const auctionService = require('../../services/auction.service');
-const groupService = require('../../services/group.service');
 const { getLegend } = require('../../utils/formatter');
 
 class ResumenCommand extends BaseCommand {
@@ -9,7 +8,7 @@ class ResumenCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!(await groupService.isAdmin(sock, ctx.jid, ctx.sender))) return;
+        this.requireAdmin(ctx);
 
         try {
             const ranking = await auctionService.getSummary();

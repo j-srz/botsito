@@ -6,6 +6,8 @@
  * @property {string} text Normalized text body
  * @property {string} rawBody Original text body
  * @property {boolean} isGroup True if message is from a group
+ * @property {boolean} isAdmin True if sender is group admin
+ * @property {boolean} isBotAdmin True if bot is group admin
  * @property {string[]} args Space-separated arguments
  * @property {Object} groupState Group RAM state
  * @property {Function} reply ctx.reply(text) sends msg formatted to current chat
@@ -26,6 +28,76 @@ class BaseCommand {
      */
     async execute(sock, m, ctx) {
         throw new Error(`Command '${this.name}' has not implemented the execute method.`);
+    }
+
+    // ─── GUARDS ──────────────────────────────────────────
+
+    /**
+     * Lanza si el mensaje no proviene de un grupo.
+     */
+    requireGroup(ctx) {
+        if (!ctx.isGroup) {
+            throw { silent: true };
+        }
+    }
+
+    /**
+     * Lanza si el sender no es admin del grupo.
+     * Envía feedback automático al usuario.
+     */
+    requireAdmin(ctx) {
+        this.requireGroup(ctx);
+        if (!ctx.isAdmin) {
+            throw { reply: '❌ Solo los *administradores* pueden usar este comando.' };
+        }
+    }
+
+    /**
+     * Lanza si el bot no es admin del grupo.
+     * Envía feedback automático al usuario.
+     */
+    requireBotAdmin(ctx) {
+        this.requireGroup(ctx);
+        if (!ctx.isBotAdmin) {
+            throw { reply: '❌ Necesito ser *administrador* del grupo para ejecutar este comando.' };
+        }
+    }
+
+    // ─── MESSAGE HELPERS ─────────────────────────────────
+
+    /**
+     * Extrae contextInfo del mensaje citado (quoted).
+     * @returns {Object|null}
+     */
+    getQuotedInfo(m) {
+        return m.message?.extendedTextMessage?.contextInfo || null;
+    }
+
+    /**
+     * Extrae el JID del usuario objetivo — primero busca menciones, luego quoted.
+     * @returns {string|null}
+     */
+    getTargetUser(m) {
+        const ctx = m.message?.extendedTextMessage?.contextInfo;
+        if (!ctx) return null;
+        const mentioned = ctx.mentionedJid;
+        if (mentioned && mentioned.length > 0) return mentioned[0];
+        return ctx.participant || null;
+    }
+
+    /**
+     * Extrae el texto del mensaje citado.
+     * @returns {string|null}
+     */
+    getQuotedText(m) {
+        const quotedInfo = this.getQuotedInfo(m);
+        if (!quotedInfo || !quotedInfo.quotedMessage) return null;
+        const q = quotedInfo.quotedMessage;
+        return q.conversation ||
+               q.extendedTextMessage?.text ||
+               q.imageMessage?.caption ||
+               q.videoMessage?.caption ||
+               null;
     }
 }
 

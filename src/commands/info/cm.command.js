@@ -28,12 +28,31 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
         commandsList += "• `.gg` - Registra ganador de subasta.\n\n";
 
+        commandsList += "*📡 INFO & UTILIDADES*\n";
+        commandsList += "• `.link` - 🔗 Obtiene el link de invitación.\n";
+        commandsList += "• `.damelink` - 🔗 Solo el link, sin texto.\n";
+        commandsList += "• `.groupinfo` - ℹ️ Info del grupo (nombre, admins, etc).\n";
+        commandsList += "• `.totalchat` - 📊 Ranking de mensajes del grupo.\n";
+        commandsList += "• `.listonline` - 🟢 Usuarios con actividad reciente.\n";
+        commandsList += "• `.verpin` - 📌 Muestra el mensaje fijado.\n";
+        commandsList += "• `.runtime` - ⏱️ Uptime del bot.\n\n";
+
         commandsList += "*🛡️ ADMINS (Solo con Rango)*\n";
         commandsList += "• `.shh` - Alerta de NO SPAM ⚠️.\n";
         commandsList += "• `.promote` - Dar administrador.\n";
         commandsList += "• `.demote` - Quitar administrador.\n";
         commandsList += "• `.kick` - Elimina a un usuario del grupo.\n";
-        commandsList += "• `.close [tiempo]` - Cerrar el grupo (Solo admins) (ej: .close 1m).\n";
+        commandsList += "• `.del` - 🗑️ Eliminar mensaje citado.\n";
+        commandsList += "• `.notify <msg>` - 📢 Aviso mencionando a todos.\n";
+        commandsList += "• `.hidetag <msg>` - 🕶️ Mención invisible a todos.\n";
+        commandsList += "• `.mute @user` - 🔇 Silenciar usuario.\n";
+        commandsList += "• `.unmute @user` - 🔊 Dessilenciar usuario.\n";
+        commandsList += "• `.muteall` - 🔇 Solo admins hablan.\n";
+        commandsList += "• `.unmuteall` - 🔊 Todos pueden hablar.\n";
+        commandsList += "• `.tachuela` - 📌 Fijar mensaje citado.\n";
+        commandsList += "• `.fantasmas` - 👻 Detectar inactivos.\n";
+        commandsList += "• `.restablecerlink` - 🔄 Revocar y generar nuevo link.\n";
+        commandsList += "• `.close [tiempo]` - Cerrar el grupo (ej: .close 1m).\n";
         commandsList += "• `.open` - Abrir el grupo (Todos).\n";
         commandsList += "• `.resumen` - Ranking de subastas.";
 

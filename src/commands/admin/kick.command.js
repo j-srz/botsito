@@ -1,5 +1,4 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 
 class KickCommand extends BaseCommand {
     constructor() {
@@ -7,9 +6,9 @@ class KickCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
+        this.requireGroup(ctx);
 
-        const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+        const quotedInfo = this.getQuotedInfo(m);
         if (quotedInfo && quotedInfo.quotedMessage) {
             const target = quotedInfo.participant;
             const botId = sock.user.id.split(":")[0] + "@s.whatsapp.net";
@@ -19,7 +18,7 @@ class KickCommand extends BaseCommand {
                 return await sock.sendMessage(ctx.jid, { text: "Intentaste kickearme... ¡Adiós!" });
             }
 
-            if (await groupService.isAdmin(sock, ctx.jid, ctx.sender)) {
+            if (ctx.isAdmin) {
                 await sock.groupParticipantsUpdate(ctx.jid, [target], "remove");
                 await sock.sendMessage(ctx.jid, { react: { text: "👢", key: m.key } });
             }

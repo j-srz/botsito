@@ -14,6 +14,16 @@ class GroupService {
         }
     }
 
+    async isBotAdmin(sock, jid) {
+        try {
+            const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+            return await this.isAdmin(sock, jid, botId);
+        } catch (e) {
+            logger.error('Error verificando bot admin:', e);
+            return false;
+        }
+    }
+
     async getGroupMetadata(sock, jid) {
         try {
             return await sock.groupMetadata(jid);

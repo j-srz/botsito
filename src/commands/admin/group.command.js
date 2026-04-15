@@ -1,6 +1,5 @@
 const BaseCommand = require('../base.command');
 const groupRegistry = require('../../services/group.registry');
-const groupService = require('../../services/group.service');
 
 class GroupCommand extends BaseCommand {
     constructor() {
@@ -8,7 +7,7 @@ class GroupCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
+        this.requireGroup(ctx);
 
         const action = ctx.args[1]?.toLowerCase();
         const value = ctx.args[2]?.toLowerCase();
@@ -32,8 +31,7 @@ class GroupCommand extends BaseCommand {
             return await ctx.reply(msg);
         }
 
-        const isAdmin = await groupService.isAdmin(sock, ctx.jid, ctx.sender);
-        if (!isAdmin) return await ctx.reply("❌ Necesitas ser Admin de WhatsApp para modificar los indices del grupo.");
+        if (!ctx.isAdmin) return await ctx.reply("❌ Necesitas ser Admin de WhatsApp para modificar los indices del grupo.");
 
         if (action === "setalias") {
             if (!value) return await ctx.reply("Uso: `.group setalias <nombre_alianza>` (sin espacios)");
@@ -56,6 +54,7 @@ class GroupCommand extends BaseCommand {
         }
 
         if (action === "name") {
+            const groupService = require('../../services/group.service');
             const mdata = await groupService.getGroupMetadata(sock, ctx.jid);
             if (mdata) await groupRegistry.updateGroupRecord(ctx.jid, { name: mdata.subject });
             return await ctx.reply(`Nombre actual capturado en DB: *${rootRecord.name || (mdata ? mdata.subject : "Desconocido")}*`);

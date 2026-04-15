@@ -1,5 +1,4 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 
 class OpenCommand extends BaseCommand {
     constructor() {
@@ -7,7 +6,7 @@ class OpenCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup || !(await groupService.isAdmin(sock, ctx.jid, ctx.sender))) return;
+        this.requireAdmin(ctx);
 
         await sock.groupSettingUpdate(ctx.jid, "not_announcement");
         await sock.sendMessage(ctx.jid, { react: { text: "🔓", key: m.key } });

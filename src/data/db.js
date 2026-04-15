@@ -7,11 +7,13 @@ const db = {
     settings: new JsonRepository(path.join(dataDir, 'group_settings.json'), {}),
     antilinkLogs: new JsonRepository(path.join(dataDir, 'antilink_logs.json'), []),
     warnings: new JsonRepository(path.join(dataDir, 'antilink_warnings.json'), {}),
-    ruletaCustom: new JsonRepository(path.join(dataDir, 'ruleta_custom.json'), []),
-    ruletaFriendly: new JsonRepository(path.join(dataDir, 'ruleta_friendly.json'), { messageId: null, participants: [] }),
     subastas: new JsonRepository(path.join(dataDir, 'subastas_registro.json'), []),
     groupsDirectory: new JsonRepository(path.join(dataDir, 'groups_directory.json'), {}),
     remoteSessions: new JsonRepository(path.join(dataDir, 'remote_sessions.json'), {}),
+    mutedUsers: new JsonRepository(path.join(dataDir, 'muted_users.json'), {}),
+    messageLogs: new JsonRepository(path.join(dataDir, 'message_logs.json'), {}),
+    pinnedMessages: new JsonRepository(path.join(dataDir, 'pinned_messages.json'), {}),
+    kissData: new JsonRepository(path.join(dataDir, 'kissData.json'), {}),
 };
 
 module.exports = db;

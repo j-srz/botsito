@@ -1,5 +1,4 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 
 class CloseCommand extends BaseCommand {
     constructor() {
@@ -7,7 +6,7 @@ class CloseCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup || !(await groupService.isAdmin(sock, ctx.jid, ctx.sender))) return;
+        this.requireAdmin(ctx);
 
         const timeStr = ctx.args[1];
 

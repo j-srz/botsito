@@ -8,7 +8,7 @@ class TodosCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
+        this.requireGroup(ctx);
 
         await sock.sendMessage(ctx.jid, { react: { text: "📣", key: m.key } });
 

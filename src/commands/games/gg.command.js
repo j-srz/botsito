@@ -1,6 +1,5 @@
 const BaseCommand = require('../base.command');
 const auctionService = require('../../services/auction.service');
-const groupService = require('../../services/group.service');
 
 class GgCommand extends BaseCommand {
     constructor() {
@@ -8,12 +7,7 @@ class GgCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
-
-        const isAdmin = await groupService.isAdmin(sock, ctx.jid, ctx.sender);
-        if (!isAdmin) {
-            return await ctx.reply("Acceso denegado.");
-        }
+        this.requireAdmin(ctx);
 
         const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
         if (mentions.length === 0) {

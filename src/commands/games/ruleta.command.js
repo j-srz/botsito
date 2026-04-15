@@ -1,6 +1,7 @@
 const BaseCommand = require('../base.command');
 const raffleService = require('../../services/raffle.service');
 const { cleanID, getLegend } = require('../../utils/formatter');
+const logger = require('../../core/logger');
 
 class RuletaCommand extends BaseCommand {
     constructor() {
@@ -8,7 +9,7 @@ class RuletaCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
+        this.requireGroup(ctx);
 
         const modo = ctx.args[1]?.toLowerCase(); // all, admin, cs, add
         const subModo = ctx.args[2]?.toLowerCase(); // m, add, remove, reset, show
@@ -98,7 +99,7 @@ class RuletaCommand extends BaseCommand {
             }, { quoted: drawMsg });
 
         } catch (e) {
-            console.error(e);
+            logger.error('Error en ruleta:', e);
         }
     }
 }

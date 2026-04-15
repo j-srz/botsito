@@ -2,6 +2,9 @@ const logger = require('../core/logger');
 const CommandRegistry = require('../commands/command.registry');
 const whitelistMiddleware = require('../middlewares/whitelist.middleware');
 const antilinkMiddleware = require('../middlewares/antilink.middleware');
+const muteMiddleware = require('../middlewares/mute.middleware');
+const moderationService = require('../services/moderation.service');
+const groupService = require('../services/group.service');
 const sessionManager = require('../core/session/group.session.manager');
 const path = require('path');
 
@@ -25,15 +28,22 @@ class MessageHandler {
         const text = rawBody.toLowerCase().trim();
         const jid = m.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
+        const sender = m.key.participant || m.key.remoteJid;
                      
         // Inyectar Session Proxy
         const groupState = isGroup ? await sessionManager.getSession(jid) : null;
 
+        // Pre-computar permisos una sola vez por mensaje
+        const isAdmin = isGroup ? await groupService.isAdmin(sock, jid, sender) : false;
+        const isBotAdmin = isGroup ? await groupService.isBotAdmin(sock, jid) : false;
+
         return {
             jid,
-            sender: m.key.participant || m.key.remoteJid,
+            sender,
             pushName: m.pushName || "Usuario Desconocido",
             isGroup,
+            isAdmin,
+            isBotAdmin,
             rawBody,
             text,
             args: text.split(' '),
@@ -73,6 +83,15 @@ class MessageHandler {
             }
         }
 
+        // Mute interceptor — elimina mensajes de usuarios silenciados
+        const isUnmuted = await muteMiddleware.handle(sock, m, ctx);
+        if (!isUnmuted) return;
+
+        // Message logging — alimenta .totalchat, .fantasmas, .listonline
+        if (ctx.isGroup) {
+            moderationService.logMessage(ctx.jid, ctx.sender).catch(() => null);
+        }
+
         // Antilink verification
         const isSafeFromLinks = await antilinkMiddleware.handle(sock, m, ctx);
         if (!isSafeFromLinks) return;
@@ -84,6 +103,11 @@ class MessageHandler {
             try {
                 await command.execute(sock, m, ctx);
             } catch (err) {
+                // Guards de BaseCommand lanzan objetos especiales
+                if (err && err.silent) return;
+                if (err && err.reply) {
+                    return await ctx.reply(err.reply);
+                }
                 logger.error(`❌ Error ejecutando comando ${command.name}:`, err);
                 await ctx.react('❌');
             }

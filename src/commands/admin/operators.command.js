@@ -1,5 +1,4 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 const groupRegistry = require('../../services/group.registry');
 const { cleanID } = require('../../utils/formatter');
 
@@ -9,7 +8,7 @@ class OperatorsCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup) return;
+        this.requireGroup(ctx);
 
         const action = ctx.args[1]?.toLowerCase();
         const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
@@ -18,7 +17,7 @@ class OperatorsCommand extends BaseCommand {
         const rootRecord = await groupRegistry.getGroupRecord(ctx.jid);
         const state = rootRecord.operators || { owner: null, list: [] };
 
-        const isAdmin = await groupService.isAdmin(sock, ctx.jid, ctx.sender);
+        const isAdmin = ctx.isAdmin;
 
         if (action === "set") {
             if (!isAdmin) return await ctx.reply("⚠️ Solo administradores de WhatsApp pueden asignar al owner de operators.");

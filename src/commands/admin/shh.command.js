@@ -1,4 +1,5 @@
 const BaseCommand = require('../base.command');
+const { cleanID } = require('../../utils/formatter');
 
 class ShhCommand extends BaseCommand {
     constructor() {
@@ -6,11 +7,11 @@ class ShhCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        const quotedInfo = m.message?.extendedTextMessage?.contextInfo;
+        const quotedInfo = this.getQuotedInfo(m);
         if (!quotedInfo || !quotedInfo.participant) return;
 
         const targetJid = quotedInfo.participant;
-        const targetNumber = targetJid.split("@")[0].split(":")[0];
+        const targetNumber = cleanID(targetJid);
 
         await sock.sendMessage(ctx.jid, {
             text: `@${targetNumber} Callese alv o ban 🦖`,

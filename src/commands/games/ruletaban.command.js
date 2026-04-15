@@ -1,7 +1,7 @@
 const BaseCommand = require('../base.command');
-const groupService = require('../../services/group.service');
 const raffleService = require('../../services/raffle.service');
 const { cleanID, getLegend } = require('../../utils/formatter');
+const logger = require('../../core/logger');
 
 class RuletabanCommand extends BaseCommand {
     constructor() {
@@ -9,7 +9,7 @@ class RuletabanCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
-        if (!ctx.isGroup || !(await groupService.isAdmin(sock, ctx.jid, ctx.sender))) return;
+        this.requireAdmin(ctx);
 
         const modo = ctx.args[1]?.toLowerCase();
         const subModo = ctx.args[2]?.toLowerCase();
@@ -111,7 +111,7 @@ class RuletabanCommand extends BaseCommand {
                 }, { quoted: lastWordsMsg });
             }
         } catch (e) {
-            console.error(e);
+            logger.error('Error en ruletaban:', e);
         }
     }
 }
