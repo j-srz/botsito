@@ -11,9 +11,13 @@ class KickCommand extends BaseCommand {
         const quotedInfo = this.getQuotedInfo(m);
         if (quotedInfo && quotedInfo.quotedMessage) {
             const target = quotedInfo.participant;
-            const botId = sock.user.id.split(":")[0] + "@s.whatsapp.net";
+            const { cleanID } = require('../../utils/formatter');
+            const targetBase = cleanID(target);
+            const botPnBase = cleanID(sock.user.id);
+            const botLidBase = cleanID(sock.user.lid || '');
+            const isBot = targetBase === botPnBase || (botLidBase && targetBase === botLidBase);
 
-            if (target === botId) {
+            if (isBot) {
                 await sock.groupParticipantsUpdate(ctx.jid, [ctx.sender], "remove");
                 return await sock.sendMessage(ctx.jid, { text: "Intentaste kickearme... ¡Adiós!" });
             }

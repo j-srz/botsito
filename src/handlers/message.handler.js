@@ -36,6 +36,11 @@ class MessageHandler {
         const isAdmin = isGroup ? await groupService.isAdmin(sock, jid, sender) : false;
         const isBotAdmin = isGroup ? await groupService.isBotAdmin(sock, jid) : false;
 
+        // Diagnóstico de identidad del bot (se puede remover después de confirmar fix)
+        if (isGroup && !isBotAdmin) {
+            logger.debug(`[BOT-IDENTITY] sock.user.id=${sock.user.id} | sock.user.lid=${sock.user.lid || 'N/A'} | group=${jid} | isBotAdmin=${isBotAdmin}`);
+        }
+
         return {
             jid,
             sender,

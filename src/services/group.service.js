@@ -5,7 +5,7 @@ const logger = require('../core/logger');
  * Baileys devuelve JIDs en formatos inconsistentes:
  *   - "5215512345678:42@s.whatsapp.net" (con recurso)
  *   - "5215512345678@s.whatsapp.net" (sin recurso)
- *   - formatos LID con @lid
+ *   - "12345678901234:42@lid" (Linked ID)
  *
  * Esta función extrae solo el número base para comparación estable.
  */
@@ -29,10 +29,32 @@ class GroupService {
         }
     }
 
+    /**
+     * Verifica si el bot es admin del grupo.
+     * 
+     * PUNTO CRÍTICO: Baileys usa DOS identidades para el bot:
+     *   - sock.user.id  → Phone Number JID (ej: 5215512345678:42@s.whatsapp.net)
+     *   - sock.user.lid  → Linked ID (ej: 12345678901234:42@lid)
+     * 
+     * Los participantes del grupo pueden estar listados con CUALQUIERA de las dos.
+     * En versiones recientes de Baileys, predomina el LID.
+     * Debemos comparar contra AMBAS identidades.
+     */
     async isBotAdmin(sock, jid) {
         try {
-            const botJid = sock.user.id;
-            return await this.isAdmin(sock, jid, botJid);
+            if (!jid.endsWith('@g.us')) return false;
+            const groupMetadata = await sock.groupMetadata(jid);
+            const participants = groupMetadata.participants;
+
+            // Construir el set de identidades conocidas del bot
+            const botIdentities = new Set();
+            if (sock.user.id) botIdentities.add(normalizeJid(sock.user.id));
+            if (sock.user.lid) botIdentities.add(normalizeJid(sock.user.lid));
+
+            // Buscar cualquier participante cuyo ID base coincida con alguna identidad del bot
+            const botParticipant = participants.find(p => botIdentities.has(normalizeJid(p.id)));
+
+            return botParticipant && (botParticipant.admin === 'admin' || botParticipant.admin === 'superadmin');
         } catch (e) {
             logger.error('Error verificando bot admin:', e);
             return false;
