@@ -5,6 +5,17 @@ class AuctionService {
         return await db.subastas.read();
     }
 
+    async registerWinner(ganadorId, monto, adminId) {
+        const data = await this.getAuctions();
+        data.push({
+            ganador_id: ganadorId,
+            monto: Number(monto),
+            registrado_por: adminId,
+            fecha: new Date().toISOString()
+        });
+        await db.subastas.write(data);
+    }
+
     async getSummary() {
         const data = await this.getAuctions();
         if (data.length === 0) return null;

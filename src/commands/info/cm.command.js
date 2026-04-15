@@ -19,7 +19,10 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.1500` - Milquinientos 💋\n";
         commandsList += "• `.ping` - Estado del bot.\n";
         commandsList += "• `.smoke` - 🚬\n";
-        commandsList += "• `.kiss` / `.tickle` - Interacción social.\n\n";
+        commandsList += "• `.wassaa` - Wassssaaa\n";
+        commandsList += "• `.vtalv` - Mandas un saludo a alguien.\n";
+        commandsList += "• `.kiss` - Manda un beso a alguien.\n\n";
+        commandsList += "• `.kiss` - Quien fue la ultima persona que te deso.\n\n";
 
         commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
         commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
@@ -29,6 +32,7 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.shh` - Alerta de NO SPAM ⚠️.\n";
         commandsList += "• `.promote` - Dar administrador.\n";
         commandsList += "• `.demote` - Quitar administrador.\n";
+        commandsList += "• `.kick` - Elimina a un usuario del grupo.\n";
         commandsList += "• `.close [tiempo]` - Cerrar el grupo (Solo admins) (ej: .close 1m).\n";
         commandsList += "• `.open` - Abrir el grupo (Todos).\n";
         commandsList += "• `.resumen` - Ranking de subastas.";
