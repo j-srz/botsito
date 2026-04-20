@@ -75,8 +75,9 @@ class MessageHandler {
         const remoteResult = await require('../middlewares/remote.middleware').handle(sock, m, ctx);
         if (remoteResult && remoteResult.intercepted) {
              if (!remoteResult.allowed) return;
-             // Si el Middleware creó un entorno Proxy a prueba de crashes E2E (Quoted Error Preventer)
-             if (remoteResult.spoofedSock) sock = remoteResult.spoofedSock; 
+             // Remote middleware ya verificó privilegios de operador — marcar como autorizado
+             ctx.isAdmin = true;
+             if (remoteResult.spoofedSock) sock = remoteResult.spoofedSock;
         }
 
         // Security Middlewares
@@ -107,6 +108,12 @@ class MessageHandler {
         const isSafeFromLinks = await antilinkMiddleware.handle(sock, m, ctx);
         if (!isSafeFromLinks) return;
 
+        // BLOQUEO GLOBAL: Solo Admins o Owner pueden ejecutar cualquier comando
+        if (!ctx.isAdmin && !ctx.isOwner) {
+            logger.warn(`[SECURITY] Bloqueado: ${ctx.sender} | no es admin ni owner`);
+            return;
+        }
+
         // Command matching
         const command = this.registry.findCommand(ctx.text);
         if (command) {
@@ -117,12 +124,6 @@ class MessageHandler {
                 if (await commandControlService.isDisabled(ctx.jid, cmdName)) {
                     return await ctx.reply('📴 Este comando está desactivado en este grupo.');
                 }
-            }
-
-            // BLOQUEO GLOBAL: Solo Admins o Owner
-            if (!ctx.isAdmin && !ctx.isOwner) {
-                logger.warn(`[SECURITY] Intento de comando rechazado: ${ctx.sender} no es admin.`);
-                return;
             }
 
             logger.info(`📩 Comando detectado: ${command.name} | Chat: ${ctx.jid}`);
