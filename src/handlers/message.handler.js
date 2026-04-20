@@ -34,8 +34,10 @@ class MessageHandler {
         const groupState = isGroup ? await sessionManager.getSession(jid) : null;
 
         // Pre-computar permisos una sola vez por mensaje
+        const commercialService = require('../services/commercial.service');
         const isAdmin = isGroup ? await groupService.isAdmin(sock, jid, sender) : false;
         const isBotAdmin = isGroup ? await groupService.isBotAdmin(sock, jid) : false;
+        const isOwner = commercialService.isOwner(sender) || await commercialService.isCommercialAdmin(sender);
 
         // Diagnóstico de identidad del bot (se puede remover después de confirmar fix)
         if (isGroup && !isBotAdmin) {
@@ -48,6 +50,7 @@ class MessageHandler {
             pushName: m.pushName || "Usuario Desconocido",
             isGroup,
             isAdmin,
+            isOwner,
             isBotAdmin,
             rawBody,
             text,
@@ -116,12 +119,9 @@ class MessageHandler {
                 }
             }
 
-            // Bloqueo global: solo admins de grupo, commercial admins y el owner ejecutan comandos
-            const commercialService = require('../services/commercial.service');
-            const isOwner = commercialService.isOwner(ctx.sender);
-            const isCommercialAdmin = await commercialService.isCommercialAdmin(ctx.sender);
-            const hasPrivilege = isOwner || isCommercialAdmin || (ctx.isGroup && ctx.isAdmin);
-            if (!hasPrivilege) {
+            // BLOQUEO GLOBAL: Solo Admins o Owner
+            if (!ctx.isAdmin && !ctx.isOwner) {
+                logger.warn(`[SECURITY] Intento de comando rechazado: ${ctx.sender} no es admin.`);
                 return;
             }
 
