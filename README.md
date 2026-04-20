@@ -658,3 +658,51 @@ Loggear el código QR en el primer inicio para escanearlo:
 docker logs -f rexbot_prod
 ```
 *Note: La política está configurada a `restart: unless-stopped`, si hay un crash eventual por V8 del host, regresará velozmente.*
+
+---
+
+## 🏘️ Módulo de Gestión de Comunidad
+
+Permite personalizar la experiencia de entrada/salida de miembros y establecer identidad de grupo.
+
+### Comandos
+
+| Comando | Descripción | Permiso |
+|---|---|---|
+| `.community set <nombre>` | Define el nombre de la comunidad (ej: `Rexitos`) | Admin |
+| `.community view` | Muestra el nombre de comunidad configurado | Admin |
+| `.bienvenida on/off` | Activa o desactiva el mensaje de bienvenida | Admin |
+| `.bienvenida set <msg>` | Configura el mensaje de bienvenida | Admin |
+| `.bienvenida ver` | Muestra la bienvenida y su estado | Admin |
+| `.bye on/off` | Activa o desactiva el mensaje de despedida | Admin |
+| `.bye set <msg>` | Configura el mensaje de despedida | Admin |
+| `.bye ver` | Muestra la despedida y su estado | Admin |
+| `.rules` | Muestra el reglamento del grupo | Todos |
+| `.rules set <texto>` | Guarda el reglamento del grupo | Admin |
+
+### Placeholders soportados
+
+| Placeholder | Descripción |
+|---|---|
+| `{{user}}` | Mención del miembro (@número) |
+| `{{group}}` | Nombre del grupo en WhatsApp |
+| `{{desc}}` | Descripción del grupo en WhatsApp |
+| `{{community}}` | Nombre configurado con `.community set` |
+
+### Captura de multimedia
+
+Si el admin envía `.bienvenida set` o `.bye set` **como descripción de una imagen, GIF o video**, el bot descarga el archivo y lo guarda en `media/assets/`. El archivo se envía automáticamente junto al texto en cada bienvenida/despedida.
+
+```
+.bienvenida set ¡Bienvenido/a {{user}} a *{{community}}*! 🦖
+(enviado como caption de una imagen)
+```
+
+El bot guarda la imagen y la enviará en cada nuevo ingreso al grupo.
+
+### Arquitectura
+
+- **`src/services/community.service.js`** — Lógica de negocio (CRUD settings + descarga de assets)
+- **`src/handlers/group-events.handler.js`** — Escucha `group-participants.update` y dispara welcome/bye
+- **`data/community_settings.json`** — Persistencia por JID de grupo
+- **`media/assets/`** — Archivos multimedia de bienvenida/despedida (volumen Docker persistente)

@@ -15,6 +15,7 @@ const db = {
     pinnedMessages: new JsonRepository(path.join(dataDir, 'pinned_messages.json'), {}),
     kissData: new JsonRepository(path.join(dataDir, 'kissData.json'), {}),
     disabledCommands: new JsonRepository(path.join(dataDir, 'disabled_commands.json'), {}),
+    communitySettings: new JsonRepository(path.join(dataDir, 'community_settings.json'), {}),
 };
 
 module.exports = db;

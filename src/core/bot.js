@@ -9,6 +9,7 @@ const logger = require('./logger');
 const env = require('../config/env.config');
 const messageHandler = require('../handlers/message.handler');
 const reactionHandler = require('../handlers/reaction.handler');
+const groupEventsHandler = require('../handlers/group-events.handler');
 
 const MAX_RECONNECT_ATTEMPTS = 10;
 const BASE_RECONNECT_DELAY_MS = 2000;
@@ -94,6 +95,10 @@ class BotClient {
             }
 
             await messageHandler.handle(this.sock, m);
+        });
+
+        this.sock.ev.on('group-participants.update', async (update) => {
+            await groupEventsHandler.handle(this.sock, update);
         });
     }
 }

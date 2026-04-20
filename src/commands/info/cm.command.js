@@ -52,7 +52,20 @@ class CmCommand extends BaseCommand {
         commandsList += "• `.resumen` - Ranking de subastas.\n";
         commandsList += "• `.disable <cmd>` - 📴 Desactivar un comando.\n";
         commandsList += "• `.enable <cmd>` - ✅ Reactivar un comando.\n";
-        commandsList += "• `.disabled` - 📋 Ver comandos desactivados.";
+        commandsList += "• `.disabled` - 📋 Ver comandos desactivados.\n\n";
+
+        commandsList += "*🏘️ COMUNIDAD*\n";
+        commandsList += "• `.community set <nombre>` - Define el nombre de la comunidad.\n";
+        commandsList += "• `.community view` - Muestra el nombre configurado.\n";
+        commandsList += "• `.bienvenida on/off` - Activa/desactiva bienvenidas.\n";
+        commandsList += "• `.bienvenida set <msg>` - Configura mensaje de bienvenida.\n";
+        commandsList += "  _Placeholders: {{user}}, {{group}}, {{desc}}, {{community}}_\n";
+        commandsList += "• `.bienvenida ver` - Ver bienvenida configurada.\n";
+        commandsList += "• `.bye on/off` - Activa/desactiva despedidas.\n";
+        commandsList += "• `.bye set <msg>` - Configura mensaje de despedida.\n";
+        commandsList += "• `.bye ver` - Ver despedida configurada.\n";
+        commandsList += "• `.rules` - Muestra el reglamento del grupo.\n";
+        commandsList += "• `.rules set <texto>` - Guarda el reglamento.";
 
         await sock.sendMessage(ctx.jid, { text: commandsList + getLegend(sock) }, { quoted: m });
     }
