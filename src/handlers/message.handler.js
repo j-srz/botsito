@@ -2,6 +2,7 @@ const logger = require('../core/logger');
 const CommandRegistry = require('../commands/command.registry');
 const whitelistMiddleware = require('../middlewares/whitelist.middleware');
 const antilinkMiddleware = require('../middlewares/antilink.middleware');
+const commercialMiddleware = require('../middlewares/commercial.middleware');
 const moderationService = require('../services/moderation.service');
 const groupService = require('../services/group.service');
 const sessionManager = require('../core/session/group.session.manager');
@@ -64,7 +65,7 @@ class MessageHandler {
         let ctx = await this._buildContext(sock, m);
 
         if (ctx.isGroup) {
-            require('../services/group.registry').registerActivity(ctx.jid).catch(() => null);
+            require('../services/group.registry').registerActivity(ctx.jid).catch(e => logger.error(`[group.registry] registerActivity falló en ${ctx.jid}: ${e.message}`));
         }
 
         // Remote Interception (Private messages masking as groups)
@@ -88,9 +89,15 @@ class MessageHandler {
         }
 
 
+        // License check — auto-salida si el grupo no tiene licencia activa
+        if (ctx.isGroup) {
+            const licenseOk = await commercialMiddleware.handle(sock, m, ctx);
+            if (!licenseOk) return;
+        }
+
         // Message logging — alimenta .totalchat, .fantasmas, .listonline
         if (ctx.isGroup) {
-            moderationService.logMessage(ctx.jid, ctx.sender).catch(() => null);
+            moderationService.logMessage(ctx.jid, ctx.sender).catch(e => logger.error(`[moderation] logMessage falló en ${ctx.jid}: ${e.message}`));
         }
 
         // Antilink verification

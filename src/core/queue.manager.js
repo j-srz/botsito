@@ -6,6 +6,7 @@ class QueueManager {
         this.queue = [];
         this.isProcessing = false;
         this.currentProcess = null;
+        this._nextTimer = null;
     }
 
     _generarBarraFila(posicion) {
@@ -61,7 +62,8 @@ ${getLegend(sock)}`;
             this.queue.shift();
             this.isProcessing = false;
             this.currentProcess = null;
-            setTimeout(() => this.processNext(), 1000);
+            clearTimeout(this._nextTimer);
+            this._nextTimer = setTimeout(() => this.processNext(), 1000);
         }
     }
 

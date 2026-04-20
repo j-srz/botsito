@@ -4,6 +4,7 @@
 class GroupMutex {
     constructor() {
         this.locks = new Map();
+        this.pending = new Map(); // contador de operaciones activas por jid
     }
 
     /**
@@ -13,23 +14,29 @@ class GroupMutex {
     async executeLocked(jid, callback) {
         if (!this.locks.has(jid)) {
             this.locks.set(jid, Promise.resolve());
+            this.pending.set(jid, 0);
         }
 
-        let release;
-        const currentLock = this.locks.get(jid);
-        const nextLock = new Promise(res => release = res);
+        this.pending.set(jid, this.pending.get(jid) + 1);
 
-        this.locks.set(jid, currentLock.then(async () => {
+        const currentLock = this.locks.get(jid);
+
+        const nextLock = currentLock.then(async () => {
             try {
                 return await callback();
             } finally {
-                release(); // Siempre libera para no hacer dead-lock en el grupo
+                const remaining = this.pending.get(jid) - 1;
+                this.pending.set(jid, remaining);
+                if (remaining === 0) {
+                    this.locks.delete(jid);
+                    this.pending.delete(jid);
+                }
             }
-        }));
+        });
 
-        // Para evitar fugas de memoria con promises apiladas si no hay actividad
-        // Idealmente en sistemas extremos se limpia el lock map cuando se resuelve todo
-        return this.locks.get(jid);
+        this.locks.set(jid, nextLock.catch(() => {}));
+
+        return nextLock;
     }
 }
 

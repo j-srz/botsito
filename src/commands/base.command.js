@@ -42,6 +42,41 @@ class BaseCommand {
     }
 
     /**
+     * Lanza si el mensaje NO es un chat privado (DM).
+     */
+    requirePrivate(ctx) {
+        if (ctx.isGroup) {
+            throw { silent: true };
+        }
+    }
+
+    /**
+     * Lanza si el sender no es el Owner del bot.
+     */
+    requireOwner(ctx) {
+        const commercialService = require('../services/commercial.service');
+        const logger = require('../core/logger');
+        if (!commercialService.isOwner(ctx.sender)) {
+            logger.warn(`[SECURITY] Intento no autorizado de comando Owner: ${this.name} | Sender: ${ctx.sender}`);
+            throw { reply: '❌ Este comando es exclusivo del propietario del sistema.' };
+        }
+    }
+
+    /**
+     * Lanza si el sender no es Owner ni Admin comercial (async).
+     * Usar con: await this.requireCommercialAdmin(ctx)
+     */
+    async requireCommercialAdmin(ctx) {
+        const commercialService = require('../services/commercial.service');
+        const logger = require('../core/logger');
+        const isAdmin = await commercialService.isCommercialAdmin(ctx.sender);
+        if (!isAdmin) {
+            logger.warn(`[SECURITY] Acceso denegado a comando admin: ${this.name} | Sender: ${ctx.sender}`);
+            throw { reply: '❌ No tienes permisos para usar este comando.' };
+        }
+    }
+
+    /**
      * Lanza si el sender no es admin del grupo.
      * Envía feedback automático al usuario.
      */

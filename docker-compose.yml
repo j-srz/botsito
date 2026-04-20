@@ -7,12 +7,14 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - NODE_ENV=production
     volumes:
-      # Persistir las credenciales de WhatsApp
-      - ./auth_info:/app/auth_info
-      # Persistir base de datos (repositorios cacheados)
-      - ./database:/app/database
-      # Sincronización de medios 
+      # Credenciales de sesión WhatsApp (crítico — no perder)
+      - auth_data:/app/auth_info
+      # Base de datos JSON
+      - db_data:/app/data
+      # Medios compartidos
       - ./media:/app/media
     deploy:
       resources:
@@ -20,3 +22,20 @@ services:
           memory: 512M
         reservations:
           memory: 256M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('fs').accessSync('/app/auth_info', require('fs').constants.F_OK)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  auth_data:
+    driver: local
+  db_data:
+    driver: local

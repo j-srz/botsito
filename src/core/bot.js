@@ -10,9 +10,14 @@ const env = require('../config/env.config');
 const messageHandler = require('../handlers/message.handler');
 const reactionHandler = require('../handlers/reaction.handler');
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY_MS = 2000;
+
 class BotClient {
     constructor() {
         this.sock = null;
+        this._reconnectAttempts = 0;
+        this._reconnectTimer = null;
     }
 
     async init() {
@@ -21,6 +26,20 @@ class BotClient {
 
         // Iniciar conexión
         await this._connectToWhatsApp();
+    }
+
+    _scheduleReconnect() {
+        if (this._reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            logger.error(`Reconexión fallida tras ${MAX_RECONNECT_ATTEMPTS} intentos. Reinicia el proceso manualmente.`);
+            process.exit(1);
+        }
+
+        const delay = BASE_RECONNECT_DELAY_MS * Math.pow(2, this._reconnectAttempts);
+        this._reconnectAttempts++;
+        logger.warn(`Reintentando conexión en ${delay}ms (intento ${this._reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+
+        clearTimeout(this._reconnectTimer);
+        this._reconnectTimer = setTimeout(() => this._connectToWhatsApp(), delay);
     }
 
     async _connectToWhatsApp() {
@@ -46,14 +65,18 @@ class BotClient {
             }
 
             if (connection === 'close') {
-                const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                logger.warn('Conexión cerrada. ¿Debe reconectar?', shouldReconnect);
-                if (shouldReconnect) {
-                    this._connectToWhatsApp();
-                } else {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+                logger.warn(`Conexión cerrada. Código: ${statusCode}. LoggedOut: ${isLoggedOut}`);
+
+                if (isLoggedOut) {
                     logger.error('Desconectado permanentemente (Logged Out). Borra la carpeta auth_info y escanea de nuevo.');
+                } else {
+                    this._scheduleReconnect();
                 }
             } else if (connection === 'open') {
+                this._reconnectAttempts = 0; // reset al reconectar exitosamente
+                clearTimeout(this._reconnectTimer);
                 logger.info('✅ REX BOT V2 ONLINE (Arquitectura Limpia)');
                 logger.info('Grupos en Whitelist:', env.ALLOWED_GROUPS);
             }

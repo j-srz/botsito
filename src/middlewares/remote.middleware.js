@@ -44,6 +44,7 @@ class RemoteMiddleware {
                 const isOp = ops.list.some(j => cleanID(j) === cleanID(senderCheck));
 
                 if (!isOwner && !isOp) {
+                    logger.warn(`[SECURITY] Intento de .remote bind no autorizado | Sender: ${ctx.sender} | Grupo: ${targetGroupId}`);
                     await ctx.reply(`❌ Privilegios insuficientes en "${rootRecord.name || targetGroupId}".`);
                     return { intercepted: true, allowed: false };
                 }
@@ -85,6 +86,7 @@ class RemoteMiddleware {
         const isOp = ops.list.some(j => cleanID(j) === cleanID(senderCheck));
 
         if (!isOwner && !isOp) {
+            logger.warn(`[SECURITY] Sesión remota revocada | Sender: ${ctx.sender} | Grupo: ${boundGroupId}`);
             await ctx.reply(`❌ Tus privilegios en el grupo anclado "${rootRecord.name || boundGroupId}" fueron revocados o el grupo se reseteó.`);
             delete activeSessions[senderID];
             await db.remoteSessions.write(activeSessions);

@@ -4,13 +4,16 @@ const path = require('path');
 const logger = require('../../core/logger');
 
 /**
- * Repositorio genérico para persistencia en archivos JSON sin bloquear el hilo
+ * Repositorio genérico para persistencia en archivos JSON sin bloquear el hilo.
+ * Escrituras serializadas via write queue + escritura atómica (tmp → rename).
  */
 class JsonRepository {
     constructor(filepath, defaultData = {}) {
         this.filepath = filepath;
+        this.tmpPath = filepath + '.tmp';
         this.defaultData = defaultData;
         this.cache = null;
+        this._writeQueue = Promise.resolve();
 
         const dir = path.dirname(this.filepath);
         if (!fsSync.existsSync(dir)) {
@@ -26,7 +29,7 @@ class JsonRepository {
      * @returns {Promise<any>}
      */
     async read() {
-        if (this.cache) return this.cache;
+        if (this.cache !== null) return this.cache;
         try {
             const data = await fs.readFile(this.filepath, 'utf-8');
             this.cache = JSON.parse(data);
@@ -38,14 +41,23 @@ class JsonRepository {
     }
 
     /**
-     * @param {any} data 
+     * Encola la escritura para que nunca haya dos writes simultáneos.
+     * Usa escritura atómica: escribe en .tmp y luego renombra al archivo real.
+     * @param {any} data
      */
     async write(data) {
         this.cache = data;
+        this._writeQueue = this._writeQueue.then(() => this._atomicWrite(data));
+        return this._writeQueue;
+    }
+
+    async _atomicWrite(data) {
         try {
-            await fs.writeFile(this.filepath, JSON.stringify(data, null, 2));
+            await fs.writeFile(this.tmpPath, JSON.stringify(data, null, 2));
+            await fs.rename(this.tmpPath, this.filepath);
         } catch (e) {
             logger.error(`Error escribiendo JSON repo: ${this.filepath}`, e);
+            try { await fs.unlink(this.tmpPath); } catch {}
         }
     }
 

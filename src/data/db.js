@@ -4,6 +4,7 @@ const JsonRepository = require('./repositories/json.repository');
 const dataDir = path.join(__dirname, '..', '..', 'data');
 
 const db = {
+    commercial: new JsonRepository(path.join(dataDir, 'commercial.json'), { admins: [] }),
     settings: new JsonRepository(path.join(dataDir, 'group_settings.json'), {}),
     antilinkLogs: new JsonRepository(path.join(dataDir, 'antilink_logs.json'), []),
     warnings: new JsonRepository(path.join(dataDir, 'antilink_warnings.json'), {}),
