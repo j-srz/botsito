@@ -33,13 +33,14 @@ class GroupEventsHandler {
             const community = await communityService.getCommunityName(jid);
 
             for (const participant of participants) {
+                const jidStr = typeof participant === 'string' ? participant : participant.id;
                 const text = communityService.resolveMessage(welcome.message, {
-                    user: `@${participant.split('@')[0]}`,
+                    user: `@${jidStr.split('@')[0]}`,
                     group: meta.subject || '',
                     desc: meta.desc || '',
                     community: community || meta.subject || '',
                 });
-                await this._sendWithMedia(sock, jid, text, [participant], welcome.mediaPath, welcome.mediaType);
+                await this._sendWithMedia(sock, jid, text, [jidStr], welcome.mediaPath, welcome.mediaType);
             }
         } catch (err) {
             logger.error(`[GroupEvents] Bienvenida fallida en ${jid}:`, err);
@@ -55,13 +56,14 @@ class GroupEventsHandler {
             const community = await communityService.getCommunityName(jid);
 
             for (const participant of participants) {
+                const jidStr = typeof participant === 'string' ? participant : participant.id;
                 const text = communityService.resolveMessage(bye.message, {
-                    user: `@${participant.split('@')[0]}`,
+                    user: `@${jidStr.split('@')[0]}`,
                     group: meta.subject || '',
                     desc: meta.desc || '',
                     community: community || meta.subject || '',
                 });
-                await this._sendWithMedia(sock, jid, text, [participant], bye.mediaPath, bye.mediaType);
+                await this._sendWithMedia(sock, jid, text, [jidStr], bye.mediaPath, bye.mediaType);
             }
         } catch (err) {
             logger.error(`[GroupEvents] Despedida fallida en ${jid}:`, err);

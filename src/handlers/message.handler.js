@@ -97,7 +97,7 @@ class MessageHandler {
 
         // Message logging — alimenta .totalchat, .fantasmas, .listonline
         if (ctx.isGroup) {
-            moderationService.logMessage(ctx.jid, ctx.sender).catch(e => logger.error(`[moderation] logMessage falló en ${ctx.jid}: ${e.message}`));
+            moderationService.logMessage(ctx.jid, ctx.sender, m.key).catch(e => logger.error(`[moderation] logMessage falló en ${ctx.jid}: ${e.message}`));
         }
 
         // Antilink verification

@@ -9,18 +9,34 @@ class ModerationService {
 
     // ─── MESSAGE LOGS ────────────────────────────────────
 
-    async logMessage(groupJid, userJid) {
+    async logMessage(groupJid, userJid, messageKey = null) {
         try {
             const data = await db.messageLogs.read();
             if (!data[groupJid]) data[groupJid] = {};
             if (!data[groupJid][userJid]) {
-                data[groupJid][userJid] = { count: 0, lastMessage: 0 };
+                data[groupJid][userJid] = { count: 0, lastMessage: 0, recentKeys: [] };
             }
-            data[groupJid][userJid].count++;
-            data[groupJid][userJid].lastMessage = Date.now();
+            const entry = data[groupJid][userJid];
+            entry.count++;
+            entry.lastMessage = Date.now();
+            if (messageKey) {
+                if (!entry.recentKeys) entry.recentKeys = [];
+                entry.recentKeys.push(messageKey);
+                if (entry.recentKeys.length > 20) entry.recentKeys.shift();
+            }
             await db.messageLogs.write(data);
         } catch (e) {
             logger.error('ModerationService.logMessage error:', e);
+        }
+    }
+
+    async getRecentKeys(groupJid, userJid) {
+        try {
+            const data = await db.messageLogs.read();
+            return data[groupJid]?.[userJid]?.recentKeys || [];
+        } catch (e) {
+            logger.error('ModerationService.getRecentKeys error:', e);
+            return [];
         }
     }
 
