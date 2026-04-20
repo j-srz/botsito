@@ -109,6 +109,8 @@ Mensaje entrante
 
 ## 🔐 Jerarquía de Seguridad y Permisos
 
+> ⚠️ **Privilegios de Administrador Obligatorios** — REX BOT opera bajo un modelo donde **todas sus funciones requieren privilegios de administrador**. No existen comandos públicos para usuarios sin rango. El bot ejecuta acciones únicamente cuando el solicitante tiene el nivel de permisos adecuado dentro de la jerarquía.
+
 ```
 ╔══════════════════════════════════════════════════════╗
 ║                  🔴 SUPER OWNER (LID)                ║
@@ -122,10 +124,6 @@ Mensaje entrante
 ║               🟡 GROUP ADMINS (WhatsApp)             ║
 ║        Administración dentro de cada grupo           ║
 ║  .kick · .promote · .demote · .close · .notify       ║
-╠══════════════════════════════════════════════════════╣
-║                  🟢 USERS (Miembros)                 ║
-║           Acceso a comandos públicos                 ║
-║      .ping · .kiss · .ruleta · .cm · .todos          ║
 ╚══════════════════════════════════════════════════════╝
 ```
 

@@ -116,6 +116,12 @@ class MessageHandler {
                 }
             }
 
+            // Bloqueo global: solo admins de grupo y el owner pueden ejecutar comandos
+            const commercialService = require('../services/commercial.service');
+            if (ctx.isGroup && !ctx.isAdmin && !commercialService.isOwner(ctx.sender)) {
+                return await ctx.reply('❌ Acceso denegado. REX BOT es exclusivo para administradores.');
+            }
+
             logger.info(`📩 Comando detectado: ${command.name} | Chat: ${ctx.jid}`);
             try {
                 await command.execute(sock, m, ctx);
