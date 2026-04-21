@@ -87,6 +87,12 @@ class GroupService {
             return null;
         }
     }
+
+    getCachedName(jid) {
+        const cached = this._metadataCache.get(jid);
+        if (cached && Date.now() < cached.expiresAt) return cached.data.subject || null;
+        return null;
+    }
 }
 
 module.exports = new GroupService();
