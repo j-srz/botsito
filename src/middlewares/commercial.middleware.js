@@ -10,6 +10,7 @@ const BYPASS_COMMANDS = new Set([
 class CommercialMiddleware {
     async handle(sock, m, ctx) {
         if (!ctx.isGroup) return true;
+        if (ctx.isOwner) return true;
 
         // Comandos de gestión siempre pasan
         const firstWord = ctx.text.split(' ')[0];

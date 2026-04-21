@@ -9,7 +9,8 @@ const sessionManager = require('../core/session/group.session.manager');
 const db = require('../data/db');
 const path = require('path');
 
-const PREFIX = '.';
+const PREFIXES = ['.', '/'];
+const hasPrefix = (t) => PREFIXES.some(p => t.startsWith(p));
 
 class MessageHandler {
     constructor() {
@@ -66,10 +67,10 @@ class MessageHandler {
         const jid = m.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
         const sender = m.key.participant || jid;
-        const hasPrefix = text.startsWith(PREFIX);
+        const isCommand = hasPrefix(text);
 
         // ─── GUARD #1: Descarte inmediato por prefijo — cero overhead ──────────────
-        if (!hasPrefix) {
+        if (!isCommand) {
             if (isGroup) {
                 // Antilink y logging deben correr aunque no sea un comando
                 const minCtx = {
@@ -88,7 +89,7 @@ class MessageHandler {
             return;
         }
 
-        // ─── Mensaje tiene prefijo → construir contexto completo ──────────────────
+        // ─── Mensaje tiene prefijo . o / → construir contexto completo ───────────
         let ctx = await this._buildContext(sock, m);
 
         if (isGroup) {
