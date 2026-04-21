@@ -3,71 +3,57 @@ const { getLegend } = require('../../utils/formatter');
 
 class CmCommand extends BaseCommand {
     constructor() {
-        super('.cm', [], 'Menú principal de comandos REX.');
+        super('.cm', [], 'Menú general de comandos REX.');
     }
 
     async execute(sock, m, ctx) {
-        let commandsList = "*📜 MENÚ DE COMANDOS REX*\n\n";
+        const menu = `*📜 REX BOT — Comandos Generales*
 
-        commandsList += "*✨ INTERACCIÓN*\n";
-        commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
-        commandsList += "• `.user` - Muestra tu info y rango.\n";
-        commandsList += "• `.id` - Obtiene ID del chat (Consola).\n";
+*🎮 INTERACCIÓN & DIVERSIÓN*
+• \`.ping\` — Estado y latencia del bot
+• \`.user\` — Tu info y rango en el grupo
+• \`.todos\` — Menciona a todos los rexitos 🦖
+• \`.kiss @user\` — Manda un beso
+• \`.mylastkiss\` — Último beso recibido
+• \`.vtalv @user\` — Saludo especial
+• \`.shh\` — Alerta de silencio ⚠️
+• \`.papoi\` — 👉👈 🍆
+• \`.joto\` — 🏳️‍🌈
+• \`.1500\` — Milquinientos 💋
+• \`.smoke\` — 🚬
+• \`.wassaa\` — Wassssaaa
 
-        commandsList += "• `.papoi` - papoii 👉👈 🍆\n";
-        commandsList += "• `.joto` - Test 🏳️‍🌈.\n";
-        commandsList += "• `.1500` - Milquinientos 💋\n";
-        commandsList += "• `.ping` - Estado del bot.\n";
-        commandsList += "• `.smoke` - 🚬\n";
-        commandsList += "• `.wassaa` - Wassssaaa\n";
-        commandsList += "• `.vtalv` - Mandas un saludo a alguien.\n";
-        commandsList += "• `.kiss` - Manda un beso a alguien.\n";
-        commandsList += "• `.mylastkiss` - Quien fue la ultima persona que te deso.\n\n";
+*📊 INFORMACIÓN DEL GRUPO*
+• \`.groupinfo\` / \`.ginfo\` — Datos del grupo
+• \`.totalchat\` — Ranking de mensajes
+• \`.listonline\` — Actividad reciente
+• \`.fantasmas\` — Inactivos 7+ días
+• \`.verpin\` — Mensaje fijado 📌
+• \`.resumen\` — Ranking de subastas
+• \`.runtime\` — Uptime del bot
+• \`.id\` — ID del chat (consola)
 
-        commandsList += "*🛠️ GRUPO & SUBASTAS*\n";
-        commandsList += "• `.todos` - Menciona a todos los rexitos 🦖.\n";
-        commandsList += "• `.gg` - Registra ganador de subasta.\n\n";
+*🎰 SUBASTAS & SORTEOS*
+• \`.gg @user <monto>\` — Registra ganador
+• \`.n\` — Reenvía/edita texto de multimedia
 
-        commandsList += "*📡 INFO & UTILIDADES*\n";
-        commandsList += "• `.link` - 🔗 Obtiene el link de invitación.\n";
-        commandsList += "• `.damelink` - 🔗 Solo el link, sin texto.\n";
-        commandsList += "• `.groupinfo` - ℹ️ Info del grupo (nombre, admins, etc).\n";
-        commandsList += "• `.totalchat` - 📊 Ranking de mensajes del grupo.\n";
-        commandsList += "• `.listonline` - 🟢 Usuarios con actividad reciente.\n";
-        commandsList += "• `.verpin` - 📌 Muestra el mensaje fijado.\n";
-        commandsList += "• `.runtime` - ⏱️ Uptime del bot.\n\n";
+*🛡️ ADMINISTRACIÓN (Solo Admins)*
+• \`.promote\` — Dar admin
+• \`.demote\` — Quitar admin
+• \`.kick\` — Expulsar usuario
+• \`.del\` — Eliminar mensaje citado 🗑️
+• \`.notify <msg>\` — Aviso a todos 📢
+• \`.hidetag <msg>\` — Mención invisible
+• \`.close [tiempo]\` — Cerrar grupo
+• \`.open\` — Abrir grupo
+• \`.link\` / \`.damelink\` — Link de invitación 🔗
+• \`.restablecerlink\` — Revocar y generar nuevo link
+• \`.disable / .enable <cmd>\` — Control de comandos
+• \`.disabled\` — Ver comandos desactivados
 
-        commandsList += "*🛡️ ADMINS (Solo con Rango)*\n";
-        commandsList += "• `.shh` - Alerta de NO SPAM ⚠️.\n";
-        commandsList += "• `.promote` - Dar administrador.\n";
-        commandsList += "• `.demote` - Quitar administrador.\n";
-        commandsList += "• `.kick` - Elimina a un usuario del grupo.\n";
-        commandsList += "• `.del` - 🗑️ Eliminar mensaje citado.\n";
-        commandsList += "• `.notify <msg>` - 📢 Aviso mencionando a todos.\n";
-        commandsList += "• `.hidetag <msg>` - 🕶️ Mención invisible a todos.\n";
-        commandsList += "• `.fantasmas` - 👻 Detectar inactivos.\n";
-        commandsList += "• `.restablecerlink` - 🔄 Revocar y generar nuevo link.\n";
-        commandsList += "• `.close [tiempo]` - Cerrar el grupo (ej: .close 1m).\n";
-        commandsList += "• `.open` - Abrir el grupo (Todos).\n";
-        commandsList += "• `.resumen` - Ranking de subastas.\n";
-        commandsList += "• `.disable <cmd>` - 📴 Desactivar un comando.\n";
-        commandsList += "• `.enable <cmd>` - ✅ Reactivar un comando.\n";
-        commandsList += "• `.disabled` - 📋 Ver comandos desactivados.\n\n";
+> Ver más: *.cm-sc* (Social) · *.cm-admin* (Sistema)`;
 
-        commandsList += "*🏘️ COMUNIDAD*\n";
-        commandsList += "• `.community set <nombre>` - Define el nombre de la comunidad.\n";
-        commandsList += "• `.community view` - Muestra el nombre configurado.\n";
-        commandsList += "• `.bienvenida on/off` - Activa/desactiva bienvenidas.\n";
-        commandsList += "• `.bienvenida set <msg>` - Configura mensaje de bienvenida.\n";
-        commandsList += "  _Placeholders: {{user}}, {{group}}, {{desc}}, {{community}}_\n";
-        commandsList += "• `.bienvenida ver` - Ver bienvenida configurada.\n";
-        commandsList += "• `.bye on/off` - Activa/desactiva despedidas.\n";
-        commandsList += "• `.bye set <msg>` - Configura mensaje de despedida.\n";
-        commandsList += "• `.bye ver` - Ver despedida configurada.\n";
-        commandsList += "• `.rules` - Muestra el reglamento del grupo.\n";
-        commandsList += "• `.rules set <texto>` - Guarda el reglamento.";
-
-        await sock.sendMessage(ctx.jid, { text: commandsList + getLegend(sock) }, { quoted: m });
+        await sock.sendMessage(ctx.jid, { text: menu + getLegend(sock) }, { quoted: m });
     }
 }
 

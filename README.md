@@ -109,13 +109,59 @@ Mensaje entrante
 
 ## 🔐 Jerarquía de Seguridad y Permisos
 
-> ⚠️ **Privilegios de Administrador Obligatorios** — REX BOT opera bajo un modelo donde **todas sus funciones requieren privilegios de administrador**. No existen comandos públicos para usuarios sin rango. El bot ejecuta acciones únicamente cuando el solicitante tiene el nivel de permisos adecuado dentro de la jerarquía.
+> ⚠️ **Privilegios de Administrador Obligatorios** — REX BOT opera bajo un modelo de seguridad de doble barrera. Mensajes sin el prefijo `.` son descartados en silencio antes de cualquier procesamiento. Los mensajes con prefijo solo se ejecutan si el remitente tiene el nivel de permisos adecuado.
+
+### Pipeline de Seguridad (orden de ejecución)
+
+```
+Mensaje entrante
+      │
+      ▼
+┌─────────────────────────────────────────────────┐
+│  GUARD #1: ¿Es chat privado sin prefijo ni      │
+│  sesión remota activa? → Ignorar en silencio    │
+└──────────┬──────────────────────────────────────┘
+           │ Construir contexto completo
+           ▼
+┌──────────────────────────┐
+│  remote.middleware       │  Intercepta .remote / sesiones persistentes
+└──────────┬───────────────┘
+           ▼
+┌──────────────────────────┐
+│  commercial.middleware   │  Valida licencia — auto-leave si expirada
+└──────────┬───────────────┘
+           ▼
+┌──────────────────────────┐
+│  moderation.service      │  Registra actividad (todos los mensajes)
+└──────────┬───────────────┘
+           ▼
+┌──────────────────────────┐
+│  antilink.middleware     │  Detecta links (todos los mensajes)
+└──────────┬───────────────┘
+           ▼
+┌──────────────────────────────────────────────────┐
+│  GUARD #2: ¿Mensaje empieza con "."?             │
+│  No → Retorno silencioso (sin log)               │
+└──────────┬───────────────────────────────────────┘
+           ▼
+┌──────────────────────────────────────────────────┐
+│  FIREWALL: ¿isAdmin o isOwner?                   │
+│  No → logger.warn [SECURITY] + retorno           │
+└──────────┬───────────────────────────────────────┘
+           ▼
+┌──────────────────────────┐
+│  Command Handler         │  Ejecuta el comando
+└──────────────────────────┘
+```
+
+### Jerarquía de Permisos
 
 ```
 ╔══════════════════════════════════════════════════════╗
-║                  🔴 SUPER OWNER (LID)                ║
-║           Control total de la infraestructura        ║
-║     /add-admin · /remove-admin · acceso absoluto     ║
+║              🔴 SUPER OWNER (soporta @lid)           ║
+║  Definido por OWNER_JID en .env                      ║
+║  Control total de la infraestructura                 ║
+║  /add-admin · /remove-admin · acceso absoluto        ║
 ╠══════════════════════════════════════════════════════╣
 ║               🟠 COMMERCIAL ADMINS                   ║
 ║        Gestión de licencias y grupos globales        ║
@@ -126,6 +172,8 @@ Mensaje entrante
 ║  .kick · .promote · .demote · .close · .notify       ║
 ╚══════════════════════════════════════════════════════╝
 ```
+
+> **Soporte @lid**: `OWNER_JID` acepta tanto `número@s.whatsapp.net` como `número@lid`. El sistema normaliza ambos formatos a número puro antes de comparar.
 
 ### Super Owner (LID)
 
@@ -342,12 +390,11 @@ ALLOWED_GROUPS=120363409112798858@g.us,120363426098126547@g.us
 
 | Variable | Requerida | Descripción |
 |---|---|---|
-| `OWNER_JID` | ✅ | JID del Super Owner — control total |
+| `OWNER_JID` | ✅ | JID del Super Owner — acepta `@s.whatsapp.net` o `@lid` |
 | `NODE_ENV` | ✅ | `development` o `production` |
 | `TZ` | ✅ | Zona horaria para expiración correcta de licencias |
-| `ALLOWED_GROUPS` | ❌ | Pre-autorización sin usar `/activate` |
 
-> ⚠️ **Importante:** Si `OWNER_JID` es incorrecto, el bot arranca sin Super Owner funcional. El formato es `número_sin_+@s.whatsapp.net`.
+> ⚠️ **Importante:** Si `OWNER_JID` es incorrecto, el bot arranca sin Super Owner funcional. Acepta ambos formatos: `524492842300@s.whatsapp.net` o `128316476502070@lid`.
 
 ---
 
@@ -440,7 +487,22 @@ docker-compose logs -f rexbot_prod
 
 La sesión queda en el volumen `auth_data` y **no requiere re-escaneo** en reinicios.
 
-### 5. Monitoreo con PM2 (bare metal, sin Docker)
+### 5. Ejecutar tests
+
+```bash
+npm test
+# o directamente:
+npx jest --runInBand
+```
+
+Los tests cubren el pipeline de seguridad de `message.handler.js` y la normalización de JIDs (`@lid` / `@s.whatsapp.net`) en `commercial.service.js`. No requieren WhatsApp ni base de datos — todas las dependencias externas están mockeadas.
+
+| Suite | Archivo | Tests |
+|---|---|---|
+| Pipeline de seguridad | `tests/security.test.js` | 5 tests |
+| Normalización de IDs | `tests/normalization.test.js` | 7 tests |
+
+### 6. Monitoreo con PM2 (bare metal, sin Docker)
 
 ```bash
 npm install -g pm2

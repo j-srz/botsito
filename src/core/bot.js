@@ -6,7 +6,6 @@ const {
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const logger = require('./logger');
-const env = require('../config/env.config');
 const messageHandler = require('../handlers/message.handler');
 const reactionHandler = require('../handlers/reaction.handler');
 const groupEventsHandler = require('../handlers/group-events.handler');
@@ -78,8 +77,7 @@ class BotClient {
             } else if (connection === 'open') {
                 this._reconnectAttempts = 0; // reset al reconectar exitosamente
                 clearTimeout(this._reconnectTimer);
-                logger.info('✅ REX BOT V2 ONLINE (Arquitectura Limpia)');
-                logger.info('Grupos en Whitelist:', env.ALLOWED_GROUPS);
+                logger.info('✅ REX BOT V2 ONLINE');
             }
         });
 

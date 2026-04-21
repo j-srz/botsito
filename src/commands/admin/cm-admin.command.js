@@ -3,7 +3,7 @@ const commercialService = require('../../services/commercial.service');
 
 class CmAdminCommand extends BaseCommand {
     constructor() {
-        super('.cm-admin', [], 'Menú de gestión comercial del bot REX');
+        super('.cm-admin', [], 'Menú de administración y sistema REX.');
     }
 
     async execute(sock, m, ctx) {
@@ -16,9 +16,11 @@ class CmAdminCommand extends BaseCommand {
 ║   🦖 *REX — Panel Admin*   ║
 ╚══════════════════════════╝
 
-📋 *GRUPOS*
-/list-groups — Listar todos los grupos
+📋 *DIRECTORIO DE GRUPOS*
+/list-groups — Listar todos los grupos con estado de licencia
 /alias <jid/alias> <nombre> — Asignar alias a un grupo
+
+🔑 *LICENCIAS*
 /activate <grupo> <tipo> [cant] — Activar licencia
   Tipos: days · weeks · months · unlimited
   Ej: /activate ventas days 30
@@ -26,14 +28,21 @@ class CmAdminCommand extends BaseCommand {
 📢 *DIFUSIÓN*
 /anuncio <mensaje> — Enviar a todos los grupos activos
 
-📡 *REMOTE*
+📡 *CONTROL REMOTO*
 .remote bind <grupo> — Anclar sesión remota
 .remote unbind — Desanclar sesión
-.remote <grupo> <cmd> — Ejecutar comando en grupo${isOwner ? `
+.remote <grupo> <cmd> — Ejecutar comando one-shot
+
+⚙️ *OPERADORES DE GRUPO*
+.operators set @user — Define operador principal
+.operators add/remove @user — Gestiona sub-operadores
+.operators get/reset — Ver o limpiar lista${isOwner ? `
 
 👑 *OWNER ONLY*
-/add-admin <número> — Dar acceso admin
-/remove-admin <número> — Revocar acceso admin` : ''}`;
+/add-admin <número> — Otorgar acceso de admin comercial
+/remove-admin <número> — Revocar acceso de admin comercial` : ''}
+
+> Ver también: *.cm* (General) · *.cm-sc* (Social)`;
 
         await ctx.reply(menu);
     }

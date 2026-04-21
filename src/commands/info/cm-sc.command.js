@@ -3,56 +3,55 @@ const { getLegend } = require('../../utils/formatter');
 
 class CmScCommand extends BaseCommand {
     constructor() {
-        super('.cm-sc', [], 'Menú de comandos REX secretos.');
+        super('.cm-sc', [], 'Menú Social y Comunidad de REX.');
     }
 
     async execute(sock, m, ctx) {
-        let commandsList = "*📜 MENÚ DE COMANDOS REX SECRETOS*\n\n";
+        const menu = `*📜 REX BOT — Social & Comunidad*
 
-        commandsList += "• `.n` - Reenvía/Edita texto de multimedia.\n";
-        commandsList += "• `.id` - Obtener ID del chat para la consola.\n\n";
+*🛡️ ANTILINK*
+• \`.antilink on\` — Activa escudo (2 strikes = ban)
+• \`.antilink off\` — Desactiva el escudo
+• \`.antilink logs\` — Historial de infracciones
 
-        commandsList += "*🛡️ SEGURIDAD (ANTILINK)*\n";
-        commandsList += "• `.antilink on` - Activa escudo (2 Strikes = Ban).\n";
-        commandsList += "• `.antilink off` - Desactiva el escudo.\n";
-        commandsList += "• `.antilink logs` - Ver quién ha mandado links.\n\n";
+*🎟️ RULETA (RIFAS)*
+• \`.ruleta all\` — Sorteo entre todos ✨
+• \`.ruleta admin\` — Sorteo entre admins
+• \`.ruleta add m\` — Inscripción por reacciones 🎟️
+• \`.ruleta cs\` — Sorteo de la tómbola
+• \`.ruleta cs add/remove @user\` — Gestiona tómbola
+• \`.ruleta cs show/reset\` — Ver o vaciar tómbola
 
-        commandsList += "*🎟️ RULETA (RIFAS)*\n";
-        commandsList += "• `.ruleta all/admin` - Sorteo rápido ✨\n";
-        commandsList += "• `.ruleta add m` - 🎟️ Inscripción por reacciones.\n";
-        commandsList += "• `.ruleta cs` - Sorteo de los inscritos.\n";
-        commandsList += "• `.ruleta cs add/remove @user` - Gestiona la tómbola.\n";
-        commandsList += "• `.ruleta cs show/reset` - Ver o vaciar la tómbola.\n\n";
+*🎲 RULETABAN*
+• \`.ruletaban all/admin\` — Ban al azar 💥
+• \`.ruletaban cs\` — Sorteo de la lista negra
+• \`.ruletaban cs add @user\` — Agregar a la lista
+• \`.ruletaban cs remove @user\` — Perdonar
+• \`.ruletaban cs show\` — Ver la lista
+• \`.ruletaban cs reset\` — Vaciar lista negra
 
-        commandsList += "*🎲 RULETABAN*\n";
-        commandsList += "• `.ruletaban all/admin [soyjoto]` - Ban al azar (Usa 'soyjoto' para salvarte) 🎲💥\n";
-        commandsList += "• `.ruletaban cs` - Inicia sorteo de la lista negra.\n";
-        commandsList += "• `.ruletaban cs add @user1 @user2...` - Agrega a la lista.\n";
-        commandsList += "• `.ruletaban cs remove @user1...` - Perdona a alguien de la lista.\n";
-        commandsList += "• `.ruletaban cs show` - Mira quiénes están en la mira.\n";
-        commandsList += "• `.ruletaban cs reset` - Vacía la lista negra por completo.\n\n";
-        // commandsList += "*👑 PANEL DE OPERADORES (Mando a Distancia)*\n";
-        // commandsList += "• `.operators set @user` - Define al owner remoto (Solo Admins).\n";
-        // commandsList += "• `.operators add/remove @user` - Otorga/Quita permisos de operador.\n";
-        // commandsList += "• `.operators get/reset` - Ver/Limpiar lista de sub-operadores.\n";
-        // commandsList += "_Mando desde el PRIVADO:_\n";
-        // commandsList += "• `.remote <alias/tag/jid> <comando>` - Ejecución suplantada de un uso.\n";
-        // commandsList += "• `.remote bind <alias>` - Anclaje persistente de sesión remote.\n";
-        // commandsList += "• `.remote unbind` - Salir de sesión remote.\n\n";
+*🏘️ COMUNIDAD & BIENVENIDAS*
+• \`.community set <nombre>\` — Nombre de la comunidad
+• \`.community view\` — Ver nombre configurado
+• \`.bienvenida on/off\` — Activa/desactiva bienvenidas
+• \`.bienvenida set <msg>\` — Configura bienvenida
+• \`.bienvenida ver\` — Ver bienvenida actual
+• \`.bye on/off\` — Activa/desactiva despedidas
+• \`.bye set <msg>\` — Configura despedida
+• \`.bye ver\` — Ver despedida actual
+• \`.rules\` — Reglamento del grupo
+• \`.rules set <texto>\` — Guardar reglamento
+_Placeholders: {{user}}, {{group}}, {{desc}}, {{community}}_
 
-        // commandsList += "*🗂️ DIRECTORIO DE GRUPOS*\n";
-        // commandsList += "• `.group list` - Lista de grupos indizados.\n";
-        // commandsList += "• `.group setalias <alias>` - Aplica apodo inteligente.\n";
-        // commandsList += "• `.group addtag <tag>` - Añade número o tag identificador.\n";
-        // commandsList += "• `.group name` - Refresca el nombre público capturado.\n\n";
+*🖼️ MULTIMEDIA*
+_Calidades: superlow · low · medium · high · superhigh_
+• \`.s [calidad]\` — Crea sticker (imagen/video/GIF)
+• \`.img [calidad]\` — Sticker a imagen o video
+• \`.cancel\` — Vacía la cola de conversión 🚮
 
-        commandsList += "*🔧 MULTIMEDIA *\n";
-        commandsList += "_Calidades: superlow (defecto), low, medium, high, superhigh_\n";
-        commandsList += "• `.s [calidad]` - Crea sticker (Imagen/Video/GIF).\n";
-        commandsList += "• `.img [calidad]` - Sticker a Imagen o Video (Animados).\n";
-        commandsList += "• `.cancel` - 🚮 Vacía la cola y detiene el motor.\n\n";
+> Ver más: *.cm* (General) · *.cm-admin* (Sistema)`;
 
-        await sock.sendMessage(ctx.jid, { text: commandsList + getLegend(sock) }, { quoted: m });
+        await sock.sendMessage(ctx.jid, { text: menu + getLegend(sock) }, { quoted: m });
     }
 }
 
