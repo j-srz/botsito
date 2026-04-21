@@ -61,27 +61,42 @@ class MessageHandler {
     async handle(sock, m) {
         if (!m.message || m.key.fromMe) return;
 
+        const rawBody = this._extractBody(m);
+        const text = rawBody.toLowerCase().trim();
         const jid = m.key.remoteJid;
-        const isPrivate = !jid.endsWith('@g.us');
+        const isGroup = jid.endsWith('@g.us');
+        const sender = m.key.participant || jid;
+        const hasPrefix = text.startsWith(PREFIX);
 
-        // ─── GUARD CLAUSE: Chats privados sin prefijo ni sesión remota → ignorar ──
-        // Evita construir contexto completo para mensajes privados irrelevantes
-        if (isPrivate) {
-            const quickBody = this._extractBody(m);
-            if (!quickBody.trim().startsWith(PREFIX)) {
+        // ─── GUARD #1: Descarte inmediato por prefijo — cero overhead ──────────────
+        if (!hasPrefix) {
+            if (isGroup) {
+                // Antilink y logging deben correr aunque no sea un comando
+                const minCtx = {
+                    jid, sender, isGroup: true, text, rawBody,
+                    args: text.split(' '), groupState: null,
+                    reply: async (t) => sock.sendMessage(jid, { text: t }, { quoted: m }),
+                    react: async (e) => sock.sendMessage(jid, { react: { text: e, key: m.key } })
+                };
+                moderationService.logMessage(jid, sender, m.key).catch(() => {});
+                await antilinkMiddleware.handle(sock, m, minCtx);
+            } else {
+                // DM sin prefijo: continuar solo si hay sesión remota activa
                 const sessions = await db.remoteSessions.read();
                 if (!sessions[jid]) return;
             }
+            return;
         }
 
+        // ─── Mensaje tiene prefijo → construir contexto completo ──────────────────
         let ctx = await this._buildContext(sock, m);
 
-        if (ctx.isGroup) {
-            require('../services/group.registry').registerActivity(ctx.jid)
+        if (isGroup) {
+            require('../services/group.registry').registerActivity(jid)
                 .catch(e => logger.error(`[group.registry] ${e.message}`));
         }
 
-        // Remote middleware — intercepta .remote y genera ctx/sock suplantados
+        // Remote middleware — intercepta .remote y sesiones sticky
         const remoteResult = await require('../middlewares/remote.middleware').handle(sock, m, ctx);
         if (remoteResult?.intercepted) {
             if (!remoteResult.allowed) return;
@@ -89,28 +104,23 @@ class MessageHandler {
             if (remoteResult.spoofedSock) sock = remoteResult.spoofedSock;
         }
 
-        // License check — auto-salida si el grupo no tiene licencia activa
+        // License check
         if (ctx.isGroup) {
             const licenseOk = await commercialMiddleware.handle(sock, m, ctx);
             if (!licenseOk) return;
         }
 
-        // Moderation logging — alimenta .totalchat y .fantasmas (corre en todos los mensajes)
+        // Moderation logging para mensajes con prefijo (no-prefijo ya logueó arriba)
         if (ctx.isGroup) {
             moderationService.logMessage(ctx.jid, ctx.sender, m.key)
                 .catch(e => logger.error(`[moderation] ${e.message}`));
         }
 
-        // Antilink — corre sobre todos los mensajes del grupo, incluyendo no-comandos
+        // Antilink para mensajes con prefijo (no-prefijo ya lo procesó arriba)
         const isSafeFromLinks = await antilinkMiddleware.handle(sock, m, ctx);
         if (!isSafeFromLinks) return;
 
-        // ─── GUARD CLAUSE DE PREFIJO ─────────────────────────────────────────────
-        // Mensajes sin prefijo no activan el pipeline de comandos — retorno silencioso
-        if (!ctx.text.startsWith(PREFIX)) return;
-
-        // ─── FIREWALL DE SEGURIDAD ────────────────────────────────────────────────
-        // Solo se loggea si alguien intentó usar un comando real sin permiso
+        // ─── FIREWALL: Solo Admins o Owner ────────────────────────────────────────
         if (!ctx.isAdmin && !ctx.isOwner) {
             logger.warn(`[SECURITY] Comando bloqueado: "${ctx.text}" | sender=${ctx.sender}`);
             return;

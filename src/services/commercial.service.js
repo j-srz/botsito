@@ -6,10 +6,10 @@ class CommercialService {
 
     // ─── IDENTITY ────────────────────────────────────────────────────────────
 
-    // Normaliza a número puro — soporta @s.whatsapp.net, @lid y sufijos :device
-    _normalizePhone(jid) {
+    // Extrae solo dígitos del ID — inmune a @lid, @s.whatsapp.net y sufijos :device
+    _numericId(jid) {
         if (!jid) return '';
-        return jid.split('@')[0].split(':')[0];
+        return jid.split('@')[0].split(':')[0].replace(/\D/g, '');
     }
 
     // Mantiene formato @s.whatsapp.net para almacenamiento en DB
@@ -28,18 +28,18 @@ class CommercialService {
     }
 
     isOwner(senderJid) {
-        // Compara solo el número — maneja @lid y @s.whatsapp.net de forma transparente
-        const ownerPhone = this._normalizePhone(this.getOwnerJid());
-        const senderPhone = this._normalizePhone(senderJid);
-        return ownerPhone.length > 0 && ownerPhone === senderPhone;
+        const ownerNum = this._numericId(this.getOwnerJid());
+        const senderNum = this._numericId(senderJid);
+        logger.debug(`[DEBUG AUTH] Intentando match: ${ownerNum} vs ${senderNum}`);
+        return ownerNum.length > 0 && ownerNum === senderNum;
     }
 
     async isCommercialAdmin(senderJid) {
         if (this.isOwner(senderJid)) return true;
         const data = await this._getData();
         const admins = data.admins || [];
-        const senderPhone = this._normalizePhone(senderJid);
-        return admins.some(a => this._normalizePhone(a) === senderPhone);
+        const senderNum = this._numericId(senderJid);
+        return admins.some(a => this._numericId(a) === senderNum);
     }
 
     // ─── ADMIN MANAGEMENT ────────────────────────────────────────────────────
