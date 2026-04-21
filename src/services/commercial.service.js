@@ -24,7 +24,7 @@ class CommercialService {
     }
 
     getOwnerJid() {
-        return process.env.OWNER_JID || '524492842300@s.whatsapp.net';
+        return require('../config/env.config').OWNER_JID;
     }
 
     isOwner(senderJid) {
