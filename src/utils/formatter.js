@@ -13,7 +13,7 @@ const getLegend = (sock) => {
         day: 'numeric',
         month: 'long'
     });
-    return `\n\n> ${botName} | ${fechaNatural}`;
+    return `\n> ${botName} | ${fechaNatural}`;
 };
 
 /**

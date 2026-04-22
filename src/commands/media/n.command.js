@@ -19,8 +19,15 @@ class NCommand extends BaseCommand {
         const legend = getLegend(sock);
 
         const addLegend = (text) => {
+            // Si no hay texto, mandamos la leyenda tal cual (que ya trae un \n)
             if (!text) return legend;
-            return text.endsWith(legend) ? text : `${text}\n\n${legend}`;
+            
+            // Si el texto ya termina con la leyenda, no la repetimos
+            if (text.endsWith(legend)) return text;
+
+            // IMPORTANTE: Ya no ponemos \n\n aquí, porque legend ya trae uno (\n)
+            // Esto hará que quede: "Tu texto" + "\n> Bot | Fecha"
+            return `${text}${legend}`;
         };
 
         let mentions = [];
