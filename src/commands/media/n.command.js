@@ -8,13 +8,19 @@ class NCommand extends BaseCommand {
     }
 
     async execute(sock, m, ctx) {
+        // 1. Detectar si la multimedia está en el citado o en el mensaje actual
         const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-        const customText = ctx.rawBody.substring(3).trim();
+        // Detectamos si el mensaje actual es imagen, video o "ver una vez"
+        const currentMsg = m.message?.imageMessage || m.message?.videoMessage || m.message?.viewOnceMessageV2 ? m.message : null;
+        const target = quoted || currentMsg;
+
+        // 2. Extraer el texto nuevo (limpiando el .n)
+        const customText = ctx.rawBody.replace(/^\.n\s*/i, '').trim();
         const legend = getLegend(sock);
 
         const addLegend = (text) => {
             if (!text) return legend;
-            return text.endsWith(legend) ? text : text + legend;
+            return text.endsWith(legend) ? text : `${text}\n\n${legend}`;
         };
 
         let mentions = [];
@@ -24,47 +30,63 @@ class NCommand extends BaseCommand {
         }
 
         try {
-            if (!quoted) {
+            if (!target) {
                 if (!customText) return await sock.sendMessage(ctx.jid, { react: { text: '❌', key: m.key } });
                 return await sock.sendMessage(ctx.jid, { text: addLegend(customText), mentions }, { quoted: m });
             }
 
-            const type = Object.keys(quoted)[0];
+            // 3. Extraer el tipo real de contenido (manejando View Once)
+            let type = Object.keys(target)[0];
+            let mediaData = target;
 
-            if (type === 'conversation' || type === 'extendedTextMessage') {
-                const originalText = quoted.conversation || quoted.extendedTextMessage?.text || "";
-                return await sock.sendMessage(ctx.jid, { text: addLegend(customText || originalText), mentions }, { quoted: m });
+            if (type === 'viewOnceMessageV2') {
+                mediaData = target.viewOnceMessageV2.message;
+                type = Object.keys(mediaData)[0];
             }
 
-            if (type === 'stickerMessage') {
-                const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-                const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
-                
-                await sock.sendMessage(ctx.jid, { sticker: buffer }, { quoted: m });
-                
-                if (customText || ctx.isGroup) {
-                    await sock.sendMessage(ctx.jid, { text: addLegend(customText || '¡Atención! 👆'), mentions }, { quoted: m });
-                }
-                return await sock.sendMessage(ctx.jid, { react: { text: '✅', key: m.key } });
-            }
+            const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
 
+            // CASO: IMAGEN O VIDEO
             if (type === 'imageMessage' || type === 'videoMessage') {
-                const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-                const buffer = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+                const buffer = await downloadMediaMessage({ message: target }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
                 const typeKey = type.replace('Message', ''); 
-                
-                const finalCaption = customText || quoted[type]?.caption || "";
+
+                // LÓGICA DE CAPTION SOLICITADA:
+                let finalCaption = "";
+
+                if (customText) {
+                    // Si el usuario puso ".n Texto", usamos "Texto"
+                    finalCaption = customText;
+                } else if (quoted) {
+                    // Si solo puso ".n" respondiendo a otro, usamos el texto del mensaje citado
+                    finalCaption = mediaData[type]?.caption || "";
+                } else {
+                    // Si mandó una imagen con ".n" (sin texto extra), el caption queda vacío (solo leyenda)
+                    finalCaption = "";
+                }
 
                 await sock.sendMessage(ctx.jid, { 
                     [typeKey]: buffer, 
                     caption: addLegend(finalCaption),
                     mentions 
                 }, { quoted: m });
-                
+
                 return await sock.sendMessage(ctx.jid, { react: { text: '✅', key: m.key } });
             }
 
-            await sock.sendMessage(ctx.jid, { react: { text: '❓', key: m.key } });
+            // CASO: TEXTO (Solo si es citado)
+            if (type === 'conversation' || type === 'extendedTextMessage') {
+                const originalText = mediaData.conversation || mediaData.extendedTextMessage?.text || "";
+                return await sock.sendMessage(ctx.jid, { text: addLegend(customText || originalText), mentions }, { quoted: m });
+            }
+
+            // CASO: STICKER
+            if (type === 'stickerMessage') {
+                const buffer = await downloadMediaMessage({ message: target }, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+                await sock.sendMessage(ctx.jid, { sticker: buffer }, { quoted: m });
+                if (customText) await sock.sendMessage(ctx.jid, { text: addLegend(customText), mentions }, { quoted: m });
+                return await sock.sendMessage(ctx.jid, { react: { text: '✅', key: m.key } });
+            }
 
         } catch (e) {
             console.error("Error en .n:", e);
