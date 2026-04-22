@@ -12,7 +12,9 @@ class CloseCommand extends BaseCommand {
 
         if (!timeStr) {
             await sock.groupSettingUpdate(ctx.jid, "announcement");
-            return await sock.sendMessage(ctx.jid, { text: "🔒" });
+            return await sock.sendMessage(ctx.jid, { 
+                react: { text: "🔒", key: m.key } 
+            });
         }
 
         let timerMs = 0;
