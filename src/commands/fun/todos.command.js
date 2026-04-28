@@ -16,15 +16,14 @@ class TodosCommand extends BaseCommand {
         if (!groupMetadata) return;
 
         const mentions = groupMetadata.participants.map((p) => p.id);
+        let list = `*Llamando rexitos*\n✦ ┉┉┉┉┉┉┉ ✧ ┉┉┉┉┉┉┉ ✦\n`;
 
-        let list = `◤━INVOCANDO REXITOS━◥\n\n`;
         for (let participant of groupMetadata.participants) {
             const num = participant.id.split("@")[0].split(":")[0];
-            list += `  ◈ @${num}\n`;
+            list += `🦖 @${num}\n`;
         }
-        list += `\n❯❯❯───────\n`;
-        list += `*REX-Bot:* Invocación completa.` + getLegend(sock);
-        
+
+        list += `✦ ┉┉┉┉┉┉┉ ✧ ┉┉┉┉┉┉┉ ✦\n*Llamados*` + getLegend(sock);
         await sock.sendMessage(ctx.jid, { text: list, mentions }, { quoted: m });
     }
 }
